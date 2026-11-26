@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { aiIntent, configured, chatBody, handleAI } from './ai.js';
+assert.equal(aiIntent('oi').type,'help');
+assert.deepEqual(aiIntent('perguntar Como funciona a chuva?'),{type:'chat',prompt:'Como funciona a chuva?'});
+assert.equal(aiIntent('perguntar '+ 'a'.repeat(451)).type,'help');
+assert.equal(configured({}),false);
+let called=false;
+const unavailable=await handleAI({arg:'perguntar teste',actor:'test',env:{},fetcher:async()=>{called=true;}});
+assert.equal(called,false);
+assert.match(unavailable,/não ativada/);
+const env={IRIS_AI_ENABLED:'true',IRIS_HF_TOKEN:'hf_TestOnly',IRIS_AI_MODEL:'example/model'};
+const answer=await handleAI({arg:'perguntar teste',actor:'test',env,fetcher:async(url,opts)=>{
+    assert.equal(url,'https://router.huggingface.co/v1/chat/completions');
+    const body=JSON.parse(opts.body);
+    assert.equal(body.messages.length,2);
+    assert.equal(body.messages[1].content,'teste');
+    assert.equal(body.model,'example/model');
+    assert.equal(body.max_tokens,220);
+    return {ok:true,json:async()=>({choices:[{message:{content:'Resposta de teste'}}]})};
+}});
+assert.match(answer,/Resposta de teste/);
+console.log('Iris: AI opt-in adapter tests passed (mock provider)');
