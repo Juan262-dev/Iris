@@ -3,7 +3,7 @@ import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
-import { makeSticker } from './sticker.js';
+import { makeSticker, makeTextSticker } from './sticker.js';
 import { makeLimiter } from './extras.js';
 
 export async function startHeadlessBot(restartCount = 0) {
@@ -72,6 +72,15 @@ export async function startHeadlessBot(restartCount = 0) {
             }
         }
     });
+    sock.ev.on('group-participants.update', event => {
+        if(closed||!event?.id?.endsWith('@g.us')||!chats.has(event.id)||!['add','remove'].includes(event.action))return;
+        const jid=event.id, action=event.action, count=event.participants?.length||0;
+        commandQueue=commandQueue.then(async()=>{
+            if(closed||!chats.has(jid))return;
+            const message=await features.welcome({jid,action,count});
+            if(message&&!closed&&chats.has(jid))await sock.sendMessage(jid,{text:message});
+        }).catch(()=>console.error('Iris: welcome notification failed'));
+    });
     sock.ev.on('messages.upsert', ({ messages, type }) => {
         if (closed || type !== 'notify') return;
         commandQueue = commandQueue.then(async () => {
@@ -100,7 +109,7 @@ export async function startHeadlessBot(restartCount = 0) {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (extra) {
-                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>makeSticker(m,baileys) }); }
+                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>makeSticker(m,baileys),textSticker:makeTextSticker }); }
                     catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; console.error('Iris: individual command failed'); }
                 }
                 if (!closed && response) await sock.sendMessage(jid, typeof response === 'string' ? { text:response } : response, { quoted: msg });
