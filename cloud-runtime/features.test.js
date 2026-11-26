@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { parseExtra, menu } from './features.js';
+assert.equal(parseExtra('!iris fechar',false),null);
+assert.equal(parseExtra('!iris criar teste texto',false),null);
+assert.deepEqual(parseExtra('!iris criar teste Texto',true),{name:'criar',arg:'teste Texto'});
+assert.deepEqual(parseExtra('!iris resposta 2',false),{name:'resposta',arg:'2'});
+assert.deepEqual(parseExtra('!iris s',false),{name:'s',arg:''});
+assert.equal(parseExtra('!ping',true),null);
+assert.equal(parseExtra('!iris desconhecido',true),null);
+assert.ok(menu().includes('!iris'));
+console.log('Iris: expanded command parser tests passed');
