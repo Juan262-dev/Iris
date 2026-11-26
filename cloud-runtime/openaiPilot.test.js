@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createAI, aiIntent, configured, likelyPrivate, safeModeration } from './openaiPilot.js';
+import { createAI, aiIntent, configured, configIssue, likelyPrivate, safeModeration } from './openaiPilot.js';
 import { parseExtra } from './features.js';
 assert.equal(aiIntent('oi').type,'help');
 assert.equal(aiIntent('perguntar '+ 'a'.repeat(451)).type,'help');
@@ -10,6 +10,10 @@ assert.equal(safeModeration({results:[{flagged:false,categories:{violence:false}
 assert.equal(safeModeration({results:[{flagged:true,categories:{violence:true}}]}),false);
 let calls=0;
 const env={IRIS_AI_ENABLED:'true',IRIS_AI_SUPERVISED_PILOT_APPROVED:'true',OPENAI_API_KEY:'sk-SyntheticTestKeyNeverReal'};
+assert.equal(configIssue({...env,OPENAI_API_KEY:'PENDENTE_CONFIGURACAO'}),'key_missing');
+assert.equal(configIssue({...env,OPENAI_API_KEY:'bad'}),'key_format');
+assert.equal(configIssue({...env,OPENAI_API_KEY:' '+env.OPENAI_API_KEY+'\n'}),'ready');
+assert.equal(configIssue({...env,IRIS_AI_SUPERVISED_PILOT_APPROVED:'false'}),'approval_missing');
 const ai=createAI({env,fetcher:async(url,opts)=>{
     calls++;
     const b=JSON.parse(opts.body);
