@@ -1,4 +1,5 @@
 import { createHmac, randomInt } from 'node:crypto';
+import { handleAI } from './ai.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
 const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','ia','criar','remover','usar','comandos']);
@@ -31,7 +32,7 @@ export function menu() {
         + '🏆 *Pontos virtuais*\n!iris perfil — participar\n!iris saldo | diario | ranking\n!iris sair — apagar seu perfil\n\n'
         + '⚙️ *Comandos personalizados*\n!iris comandos | usar nome\n\n'
         + '🔐 *Responsável*\n!iris on | off | abrir | fechar\n!iris criar nome texto | remover nome\n\n'
-        + '🤖 IA: !iris ia (ainda não disponível)';
+        + '🤖 IA: !iris ia | !iris ia status | !iris ia perguntar texto';
 }
 export function makeFeatures() {
     const quizzes = new Map();
@@ -54,7 +55,7 @@ export function makeFeatures() {
         if (name === 'menu') return menu();
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Modo de comandos.';
-        if (name === 'ia') return '🌸 IA ainda não configurada. Nenhuma conversa é enviada a serviços de IA.';
+        if (name === 'ia') return handleAI({arg,actor});
         if (name === 'dado') return '🎲 Resultado: ' + randomInt(1,7);
         if (name === 'moeda') return '🪙 ' + (randomInt(2) ? 'Cara' : 'Coroa') + ' — sem apostas.';
         if (name === 'grupo') {
