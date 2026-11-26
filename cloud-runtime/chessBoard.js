@@ -11,12 +11,14 @@ const art = {
 };
 const CELL=88, M=42, SIZE=788;
 const coord=s=>typeof s==='string'&&/^[a-h][1-8]$/.test(s)?{c:s.charCodeAt(0)-97,r:8-Number(s[1])}:null;
-export function boardSvg(game,lastMove=null){
+const themes={classico:['#f0e5c6','#63834e','#162b26'],madeira:['#f4dfb7','#a97548','#463025'],escuro:['#aab8c7','#56687e','#172130']};
+export function boardSvg(game,lastMove=null,theme='classico'){
+    const colors=Object.hasOwn(themes,theme)?themes[theme]:themes.classico;
     const cells=[],pieces=[],labels=[];
     const highlighted=new Set([lastMove?.from,lastMove?.to].filter(s=>coord(s)));
     for(let r=0;r<8;r++)for(let c=0;c<8;c++){
         const x=M+c*CELL,y=M+r*CELL,square=String.fromCharCode(97+c)+(8-r);
-        cells.push('<rect x="'+x+'" y="'+y+'" width="'+CELL+'" height="'+CELL+'" fill="'+((r+c)%2?'#63834e':'#f0e5c6')+'"/>');
+        cells.push('<rect x="'+x+'" y="'+y+'" width="'+CELL+'" height="'+CELL+'" fill="'+colors[(r+c)%2]+'"/>');
         if(highlighted.has(square))cells.push('<rect x="'+(x+2)+'" y="'+(y+2)+'" width="84" height="84" fill="#f8d34e" fill-opacity=".58" stroke="#e9b92f" stroke-width="3"/>');
         const p=game.get(square);
         if(!p)continue;
@@ -29,8 +31,8 @@ export function boardSvg(game,lastMove=null){
         const y=M+i*CELL+CELL/2+8;
         labels.push('<text x="21" y="'+y+'">'+(8-i)+'</text><text x="767" y="'+y+'">'+(8-i)+'</text>');
     }
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+SIZE+'" height="'+SIZE+'" viewBox="0 0 '+SIZE+' '+SIZE+'"><rect width="'+SIZE+'" height="'+SIZE+'" rx="18" fill="#162b26"/><g font-family="sans-serif" font-size="23" font-weight="bold" text-anchor="middle" fill="#edf3e6">'+labels.join('')+'</g>'+cells.join('')+pieces.join('')+'<rect x="'+M+'" y="'+M+'" width="704" height="704" fill="none" stroke="#253b30" stroke-width="2"/></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+SIZE+'" height="'+SIZE+'" viewBox="0 0 '+SIZE+' '+SIZE+'"><rect width="'+SIZE+'" height="'+SIZE+'" rx="18" fill="'+colors[2]+'"/><g font-family="sans-serif" font-size="23" font-weight="bold" text-anchor="middle" fill="#edf3e6">'+labels.join('')+'</g>'+cells.join('')+pieces.join('')+'<rect x="'+M+'" y="'+M+'" width="704" height="704" fill="none" stroke="#253b30" stroke-width="2"/></svg>';
 }
-export async function renderBoard(game,lastMove=null) {
-    return sharp(Buffer.from(boardSvg(game,lastMove))).png().toBuffer();
+export async function renderBoard(game,lastMove=null,theme='classico') {
+    return sharp(Buffer.from(boardSvg(game,lastMove,theme))).png().toBuffer();
 }
