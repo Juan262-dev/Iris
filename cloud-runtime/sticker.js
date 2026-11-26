@@ -3,8 +3,10 @@ sharp.cache(false);
 sharp.concurrency(1);
 
 export async function makeSticker(msg, baileys) {
+    const doc = msg.message?.documentMessage;
+    if (doc?.mimetype === 'image/gif') return makeAnimatedSticker(doc,baileys);
     const image = msg.message?.imageMessage;
-    if (!image || !['image/jpeg','image/png','image/webp'].includes(image.mimetype)) return '🌸 Envie uma foto sua com a legenda !iris s. Imagens JPG, PNG ou WebP.';
+    if (!image || !['image/jpeg','image/png','image/webp'].includes(image.mimetype)) return '🌸 Envie uma foto sua com a legenda !iris s. Imagens JPG, PNG ou WebP; GIF como documento com a mesma legenda.';
     const limit = 5 * 1024 * 1024;
     if (Number(image.fileLength || 0) > limit) return '🌸 Envie uma imagem de até 5 MB.';
     const stream = await baileys.downloadContentFromMessage(image,'image');
@@ -24,4 +26,25 @@ export async function makeSticker(msg, baileys) {
         if(out.length<=100000) return {sticker:out};
     }
     return '🌸 Não foi possível reduzir a imagem. Tente uma foto mais simples.';
+}
+
+export async function makeAnimatedSticker(doc, baileys) {
+    const limit = 2 * 1024 * 1024;
+    try {
+        if(Number(doc.fileLength||0)>limit)return '🌸 GIF de até 2 MB.';
+        const stream=await baileys.downloadContentFromMessage(doc,'document');
+        const chunks=[];let n=0;
+        for await(const chunk of stream){n+=chunk.length;if(n>limit){stream.destroy?.();return '🌸 GIF acima de 2 MB.';}chunks.push(chunk);}
+        const input=Buffer.concat(chunks);
+        if(!['GIF87a','GIF89a'].includes(input.toString('ascii',0,6)))return '🌸 Arquivo GIF inválido.';
+        const meta=await sharp(input,{animated:true,limitInputPixels:8000000}).metadata();
+        const pages=meta.pages||1;
+        const duration=(meta.delay||[]).reduce((a,b)=>a+b,0);
+        if(pages>30||duration>6000||meta.width*(meta.pageHeight||meta.height)*pages>8000000)return '🌸 Use GIF de até 6 segundos, 30 quadros e resolução moderada.';
+        for(const quality of [55,35,20]){
+            const out=await sharp(input,{animated:true,limitInputPixels:8000000,failOn:'warning'}).resize(512,512,{fit:'contain',background:{r:0,g:0,b:0,alpha:0}}).webp({quality,effort:2,loop:0}).toBuffer();
+            if(out.length<=450000)return {sticker:out};
+        }
+        return '🌸 GIF muito complexo para figurinha. Tente um menor.';
+    }catch{return '🌸 Não foi possível converter este GIF.';}
 }
