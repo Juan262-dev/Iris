@@ -7,6 +7,7 @@ import { makeTextSticker } from './sticker.js';
 import { stickerCommand, sendSoundSticker } from './stickerCommands.js';
 import { makeMeme } from './advancedMedia.js';
 import { makeLimiter } from './extras.js';
+import { isChessMove } from './persistentChess.js';
 
 export async function startHeadlessBot(restartCount = 0) {
     if (process.env.IRIS_BOT_ENABLED !== 'true') return;
@@ -91,14 +92,16 @@ export async function startHeadlessBot(restartCount = 0) {
                 const jid = msg.key?.remoteJid;
                 const id = msg.key?.id;
                 if (!jid || !id || seen.has(jid + ':' + id)) continue;
-                // Only fresh, explicitly addressed text commands; never store chat contents.
+                // Only fresh explicit commands or narrowly matched chess moves; never store chat contents.
                 const ts = Number(msg.messageTimestamp || 0);
                 if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
                 const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || msg.message?.videoMessage?.caption || '';
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
                 const owner = msg.key?.fromMe === true;
                 const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
-                if (!action && !extra) continue;
+                const plain = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+                const shortMove = !action && !extra && chats.has(jid) && jid.endsWith('@g.us') && isChessMove(plain);
+                if (!action && !extra && !shortMove) continue;
                 seen.add(jid + ':' + id);
                 if (seen.size > 500) seen.delete(seen.values().next().value);
                 const actor = owner ? (sock.user?.id || 'owner').split(':')[0] + '@self' : msg.key?.participant;
@@ -106,10 +109,13 @@ export async function startHeadlessBot(restartCount = 0) {
                 let response;
                 if (action === 'on') {
                     await chats.set(jid, true);
-                    response = '🌸 Íris — bot ativado neste grupo. Respondo apenas aos comandos !iris. Use somente com a autorização dos participantes. O responsável pode desativar com !iris off.';
+                    response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos !iris e a jogadas curtas de partidas ativas. Use somente com a autorização dos participantes. O responsável pode desativar com !iris off.';
                 } else if (action === 'off') {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
+                } else if (shortMove) {
+                    try { response=await features.chessMove({jid,actor,arg:plain}); }
+                    catch { console.error('Iris: chess shorthand processing failed'); }
                 } else if (extra) {
                     try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys) }); }
                     catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; console.error('Iris: individual command failed'); }
