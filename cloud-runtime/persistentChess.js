@@ -35,20 +35,57 @@ export function pickMove(game,level,choose=randomInt) {
     }
     return choices[choose(choices.length)];
 }
+
+const piecesPT={C:'N',B:'B',T:'R',D:'Q',R:'K',N:'N',Q:'Q',K:'K'};
+const namesPT={peao:'p',cavalo:'n',bispo:'b',torre:'r',dama:'q',rainha:'q',rei:'k'};
+const cleanMove=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+export function isChessMove(v){
+    const t=cleanMove(v);
+    return t.length<=30&&(/^[a-h][1-8](?:\s*[-]?\s*)[a-h][1-8][qrbnQRCBTDN]?$/i.test(t) ||
+        /^(?:[CBTDRNQK][a-h]?[1-8]?x?|[a-h]x)?[a-h][1-8](?:=[CBTDRNQK])?[+#]?$/.test(t) ||
+        /^(?:O-O(?:-O)?|0-0(?:-0)?)[+#]?$/i.test(t) ||
+        /^(?:peao|cavalo|bispo|torre|dama|rainha|rei)\s+[a-h][1-8]$/i.test(t));
+}
+export function resolveChessMove(game,v){
+    const t=cleanMove(v);
+    const moves=game.moves({verbose:true});
+    const coord=/^([a-h][1-8])\s*-?\s*([a-h][1-8])([qrbnQRCBTDN])?$/i.exec(t);
+    if(coord){
+        const promotion=coord[3]?({D:'q',T:'r',C:'n',B:'b'}[coord[3].toUpperCase()]||coord[3].toLowerCase()):'';
+        return moves.filter(m=>m.from===coord[1].toLowerCase()&&m.to===coord[2].toLowerCase()&&(m.promotion||'')===promotion);
+    }
+    const named=/^(\w+)\s+([a-h][1-8])$/i.exec(t);
+    if(named&&Object.hasOwn(namesPT,named[1].toLowerCase())){
+        return moves.filter(m=>m.piece===namesPT[named[1].toLowerCase()]&&m.to===named[2].toLowerCase()&&!m.promotion);
+    }
+    let san=t.replace(/0/g,'O').replace(/[+#]$/,'');
+    if(/^[CBTDRNQK]/.test(san))san=piecesPT[san[0]]+san.slice(1);
+    san=san.replace(/=([CBTDRNQK])$/,(_,p)=>'='+piecesPT[p]);
+    return moves.filter(m=>m.san.replace(/[+#]$/,'')===san);
+}
+
 const reconstruct=record=>{
     const game=new Chess();
     for(const s of record.moves)game.move({from:s.slice(0,2),to:s.slice(2,4),...(s.length===5?{promotion:s[4]}:{})});
     return game;
 };
 export function makePersistentChess({readGroup,save,choose=randomInt,now=Date.now}){
-    return async ({jid,actor,arg})=>{
-        if(!actor)return '🌸 Participante não identificado.';
+    return async ({jid,actor,arg,activeOnly=false})=>{
+        if(!actor)return activeOnly?null:'🌸 Participante não identificado.';
+        if(activeOnly&&!isChessMove(arg))return null;
         const {s,state}=await readGroup(jid);
         const id=createHmac('sha256',s.key).update(jid+':'+actor).digest('hex');
+        if(activeOnly&&!state.chess)return null;
         const db=state.chess??={solo:{},duel:null,stats:{},prefs:{}};
         const raw=String(arg||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
         const input=raw.replace(/^([a-h][1-8])\s+([a-h][1-8][qrbn]?)$/,'$1$2');
         const persist=()=>save(s,state);
+        if(activeOnly){
+            const duel=db.duel;
+            const liveDuel=duel?.black&&duel.expires>now()&&(duel.white===id||duel.black===id);
+            const liveSolo=db.solo[id]?.expires>now();
+            if(!liveDuel&&!liveSolo)return null;
+        }
         const label=k=>'Jogador '+k.slice(0,6);
         const pref=db.prefs[id]||{theme:'classico',level:'facil'};
         const activeDuel=()=>db.duel&&(db.duel.white===id||db.duel.black===id);
@@ -120,12 +157,16 @@ export function makePersistentChess({readGroup,save,choose=randomInt,now=Date.no
             if(duel)db.duel=null;else delete db.solo[id];
         };
         if(input==='sair'){finish(color==='w'?'b':'w');await persist();return '♟️ Partida encerrada por desistência. Resultado registrado.';}
-        if(input==='tabuleiro'||input==='aceitar'||newGame||!input)return board('Vez: '+turn()+'. Use !iris xadrez e2e4. Partida salva por até 7 dias de inatividade. Use apagar para excluir seus dados.');
-        if(!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(input))return 'Use !iris xadrez ajuda.';
-        if(game.turn()!==color)return 'Aguarde a vez das suas peças.';
-        try{const m=game.move({from:input.slice(0,2),to:input.slice(2,4),...(input.length===5?{promotion:input[4]}:{})});rec.moves.push(notation(m));}
-        catch{return '♟️ Jogada inválida. Use !iris xadrez tabuleiro.';}
-        let status='Jogada: '+input;
+        if(input==='tabuleiro'||input==='aceitar'||newGame||!input)return board('Vez: '+turn()+'. Envie só e2e4, e2 e4, Cf3 ou cavalo f3. Partida salva por até 7 dias de inatividade. Use apagar para excluir seus dados.');
+        if(!isChessMove(arg))return activeOnly?null:'Use !iris xadrez ajuda.';
+        if(game.turn()!==color)return activeOnly?null:'Aguarde a vez das suas peças.';
+        const candidates=resolveChessMove(game,arg);
+        if(candidates.length>1)return '♟️ Mais de uma peça pode chegar nessa casa. Informe a origem e o destino, por exemplo g1f3.';
+        if(!candidates.length)return '♟️ Jogada inválida. Consulte !iris xadrez tabuleiro.';
+        const selected=candidates[0];
+        try{const m=game.move(moveArg(selected));rec.moves.push(notation(m));}
+        catch{return '♟️ Jogada inválida. Consulte !iris xadrez tabuleiro.';}
+        let status='Jogada: '+notation(selected);
         if(!duel&&!game.isGameOver()){
             const m=pickMove(game,rec.level,choose);
             game.move(moveArg(m));rec.moves.push(notation(m));status+='\nÍris jogou: '+notation(m);
