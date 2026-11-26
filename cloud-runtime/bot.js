@@ -8,6 +8,9 @@ import { stickerCommand, sendSoundSticker } from './stickerCommands.js';
 import { makeMeme } from './advancedMedia.js';
 import { makeLimiter } from './extras.js';
 import { isChessMove } from './persistentChess.js';
+import { shortActivity } from './community.js';
+import { convertMedia,converterNames } from './converters.js';
+import { setRuntime,makeJobQueue,reconnectDelay } from './runtimeStatus.js';
 
 export async function startHeadlessBot(restartCount = 0) {
     if (process.env.IRIS_BOT_ENABLED !== 'true') return;
@@ -15,6 +18,10 @@ export async function startHeadlessBot(restartCount = 0) {
     if (typeof makeSocket !== 'function') throw new Error('Baileys socket export unavailable');
     const chats = await loadChatSettings();
     const features = makeFeatures();
+    setRuntime('whatsapp','conectando');
+    const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
+    const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames]);
+    let openedAt=0;
     const pairingNumber = process.env.IRIS_PAIRING_PHONE || '';
     const auth = await useCloudAuthState('0', baileys);
     console.log('Iris: stored device registration: ' + (auth.state.creds.registered === true ? 'registered' : 'not_registered'));
@@ -40,7 +47,8 @@ export async function startHeadlessBot(restartCount = 0) {
     sock.ev.on('connection.update', async update => {
         if (closed) return;
         if (update.connection === 'open') {
-            restartCount = 0;
+            openedAt=Date.now();
+            setRuntime('whatsapp','conectado');
             console.log('Iris: WhatsApp connected');
         }
         if (update.connection === 'close') {
@@ -49,16 +57,18 @@ export async function startHeadlessBot(restartCount = 0) {
             const status = update.lastDisconnect?.error?.output?.statusCode ?? update.lastDisconnect?.error?.statusCode;
             const reason = Number.isInteger(status) && status >= 100 && status <= 999 ? String(status) : 'unknown';
             console.log('Iris: WhatsApp disconnected; status=' + reason + '; registered=' + (auth.state.creds.registered === true));
-            // WhatsApp requests a fresh socket after successful device registration.
-            // Persist the registered state before starting a single bounded restart.
-            if (status === (baileys.DisconnectReason?.restartRequired ?? 515) && auth.state.creds.registered === true && restartCount < 1) {
-                try {
+            const attempt=openedAt&&Date.now()-openedAt>300000?0:restartCount;
+            const delay=reconnectDelay(status,attempt,auth.state.creds.registered===true);
+            setRuntime('whatsapp',delay===null?'desconectado':'reconectando');
+            if(delay!==null){
+                try{
+                    await commandQueue;
+                    await mediaQueue.idle();
                     await auth.saveCreds();
-                    console.log('Iris: restarting registered socket after status 515');
-                    await startHeadlessBot(restartCount + 1);
-                } catch {
-                    console.error('Iris: registered socket restart failed.');
-                }
+                    console.log('Iris: bounded reconnect scheduled');
+                    await new Promise(resolve=>setTimeout(resolve,delay));
+                    await startHeadlessBot(attempt+1);
+                }catch{setRuntime('whatsapp','desconectado');console.error('Iris: bounded reconnect failed');}
                 return;
             }
             console.log('Iris: check linked-device status before restarting.');
@@ -84,6 +94,14 @@ export async function startHeadlessBot(restartCount = 0) {
             if(message&&!closed&&chats.has(jid))await sock.sendMessage(jid,{text:message});
         }).catch(()=>console.error('Iris: welcome notification failed'));
     });
+    async function deliver(jid,response,msg){
+        if(closed||!response||!chats.has(jid))return;
+        if(response.soundSticker){
+            try{await sendSoundSticker(sock,baileys,jid,response.soundSticker,msg);}
+            catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use !iris s.'},{quoted:msg});}
+        }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
+    }
+    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name)});
     sock.ev.on('messages.upsert', ({ messages, type }) => {
         if (closed || type !== 'notify') return;
         commandQueue = commandQueue.then(async () => {
@@ -101,7 +119,8 @@ export async function startHeadlessBot(restartCount = 0) {
                 const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
                 const plain = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
                 const shortMove = !action && !extra && chats.has(jid) && jid.endsWith('@g.us') && isChessMove(plain);
-                if (!action && !extra && !shortMove) continue;
+                const activity=!action&&!extra&&!shortMove&&chats.has(jid)&&jid.endsWith('@g.us')?shortActivity(plain):null;
+                if (!action && !extra && !shortMove && !activity) continue;
                 seen.add(jid + ':' + id);
                 if (seen.size > 500) seen.delete(seen.values().next().value);
                 const actor = owner ? (sock.user?.id || 'owner').split(':')[0] + '@self' : msg.key?.participant;
@@ -109,21 +128,34 @@ export async function startHeadlessBot(restartCount = 0) {
                 let response;
                 if (action === 'on') {
                     await chats.set(jid, true);
-                    response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos !iris e a jogadas curtas de partidas ativas. Use somente com a autorização dos participantes. O responsável pode desativar com !iris off.';
+                    response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos !iris e a respostas curtas de atividades ativas. Use somente com a autorização dos participantes. O responsável pode desativar com !iris off.';
                 } else if (action === 'off') {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (shortMove) {
                     try { response=await features.chessMove({jid,actor,arg:plain}); }
                     catch { console.error('Iris: chess shorthand processing failed'); }
+                } else if (activity) {
+                    try{response=await features.activity({jid,actor,command:activity});}
+                    catch{console.error('Iris: short activity processing failed');}
+                } else if (extra&&mediaNames.has(extra.name)){
+                    const accepted=mediaQueue.add(async()=>{
+                        if(closed||!chats.has(jid))return;
+                        try{await deliver(jid,await runFeature(extra,jid,actor,msg,owner),msg);}
+                        catch{console.error('Iris: media job failed');await deliver(jid,'🌸 Não consegui processar a mídia.',msg);}
+                    },()=>deliver(jid,'🌸 A fila demorou demais. Envie o comando novamente.',msg));
+                    if(!accepted)response='🌸 Fila de mídia ocupada. Tente novamente em instantes.';
+                    else continue;
                 } else if (extra) {
-                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys) }); }
+                    try { response = await runFeature(extra,jid,actor,msg,owner); }
                     catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; console.error('Iris: individual command failed'); }
                 }
-                if (!closed && response?.soundSticker) {
-                    try { await sendSoundSticker(sock,baileys,jid,response.soundSticker,msg); }
-                    catch { if(!closed)await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use !iris s para figurinha silenciosa.'},{quoted:msg}); }
-                } else if (!closed && response) await sock.sendMessage(jid, typeof response === 'string' ? { text:response } : response, { quoted: msg });
+                if(!closed&&response){
+                    try{
+                        if(action==='off')await sock.sendMessage(jid,{text:response},{quoted:msg});
+                        else await deliver(jid,response,msg);
+                    }catch{console.error('Iris: individual response delivery failed');}
+                }
             }
         }).catch(() => console.error('Iris: command processing failed; check storage and connection.'));
     });
