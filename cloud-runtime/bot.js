@@ -4,6 +4,7 @@ import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
 import { makeSticker } from './sticker.js';
+import { makeLimiter } from './extras.js';
 
 export async function startHeadlessBot(restartCount = 0) {
     if (process.env.IRIS_BOT_ENABLED !== 'true') return;
@@ -30,6 +31,7 @@ export async function startHeadlessBot(restartCount = 0) {
     let pending = false;
     let closed = false;
     const seen = new Set();
+    const allowCommand = makeLimiter();
     let commandQueue = Promise.resolve();
     sock.ev.on('creds.update', () => auth.saveCreds().catch(() => { process.exit(1); }));
     sock.ev.on('connection.update', async update => {
@@ -81,13 +83,15 @@ export async function startHeadlessBot(restartCount = 0) {
                 // Only fresh, explicitly addressed text commands; never store chat contents.
                 const ts = Number(msg.messageTimestamp || 0);
                 if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
-                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '';
+                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || '';
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
                 const owner = msg.key?.fromMe === true;
                 const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
                 if (!action && !extra) continue;
                 seen.add(jid + ':' + id);
                 if (seen.size > 500) seen.delete(seen.values().next().value);
+                const actor = owner ? (sock.user?.id || 'owner').split(':')[0] + '@self' : msg.key?.participant;
+                if (action !== 'off' && action !== 'on' && (!actor || !allowCommand(jid,actor))) continue;
                 let response;
                 if (action === 'on') {
                     await chats.set(jid, true);
@@ -96,8 +100,8 @@ export async function startHeadlessBot(restartCount = 0) {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (extra) {
-                    const actor = owner ? (sock.user?.id || 'owner').split(':')[0] + '@self' : msg.key?.participant;
-                    response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>makeSticker(m,baileys) });
+                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>makeSticker(m,baileys) }); }
+                    catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; console.error('Iris: individual command failed'); }
                 }
                 if (!closed && response) await sock.sendMessage(jid, typeof response === 'string' ? { text:response } : response, { quoted: msg });
             }
