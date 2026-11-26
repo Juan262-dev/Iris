@@ -53,9 +53,11 @@ export async function makeVideoSticker(msg,baileys,{long=false,sound=false}={}){
     const seconds=long?LONG_LIMIT_SECONDS:VIDEO_LIMIT_SECONDS;
     const limit=long?LONG_LIMIT_BYTES:VIDEO_LIMIT_BYTES;
     if(!media||media.mimetype!=='video/mp4'||media.viewOnce)return '🌸 Envie ou responda a um vídeo MP4 próprio ou autorizado.';
-    if(Number(media.seconds||0)>seconds)return '🌸 Use vídeo de até '+seconds+' segundos e '+(limit/MB)+' MB.';
+    // The WhatsApp duration is only informational. FFmpeg reads the real media
+    // and clips the start of the video and soundtrack to the requested output length.
+    // A longer source is allowed as long as it fits the download size budget.
     try{return await videoToSticker(await download(media,'video',baileys,limit),{seconds,sound});}
-    catch(e){return e?.code==='ENOENT'?'🌸 Conversão MP4 indisponível neste servidor.':'🌸 Não consegui converter. Use MP4 de até '+seconds+' segundos, '+(limit/MB)+' MB, resolução moderada'+(sound?' e uma faixa de áudio.':'.');}
+    catch(e){return e?.code==='ENOENT'?'🌸 Conversão MP4 indisponível neste servidor.':'🌸 Não consegui converter. Use MP4 de até '+(limit/MB)+' MB, resolução moderada (a figurinha usa os primeiros '+seconds+' segundos)'+(sound?' e uma faixa de áudio.':'.');}
 }
 const escape=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const clean=s=>String(s||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim();
