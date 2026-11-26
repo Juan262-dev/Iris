@@ -7,6 +7,7 @@
     "node": ">=20.19.0"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "7.0.0-rc14"
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "sharp": "0.35.5"
   }
 }
