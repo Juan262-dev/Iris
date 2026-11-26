@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { decideCommand } from './chatSettings.js';
+const group = { jid: 'test@g.us', fromMe: false, enabled: false };
+const run = (text, props = {}) => decideCommand({ ...group, ...props, text });
+assert.equal(run('!iris on'), null);
+assert.equal(run('!iris on', { fromMe: true }), 'on');
+assert.equal(run('!iris off', { fromMe: true }), 'off');
+assert.equal(run('!iris off', { enabled: true }), null);
+assert.equal(run('!iris ping'), null);
+assert.equal(run('!iris ping', { enabled: true, fromMe: true }), 'ping');
+assert.equal(run('!iris ping', { enabled: true }), 'ping');
+assert.equal(run('!iris menu', { enabled: true }), 'menu');
+assert.equal(run('!iris status', { enabled: true }), 'status');
+assert.equal(run('!ajuda', { enabled: true }), null);
+assert.equal(run('!iris on', { jid: 'test@s.whatsapp.net', fromMe: true }), null);
+assert.equal(run('!iris on', { jid: 'status@broadcast', fromMe: true }), null);
+console.log('Iris: group opt-in command tests passed');
