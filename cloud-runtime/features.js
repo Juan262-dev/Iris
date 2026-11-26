@@ -1,9 +1,9 @@
 import { createHmac, randomInt } from 'node:crypto';
-import { handleAI } from './ai.js';
+import { localReply, makeLocalGames, shop, purchase } from './localFun.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','ia','criar','remover','usar','comandos']);
-const needsOwner = new Set(['abrir','fechar','criar','remover']);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','chat','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos']);
+const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras']);
 export function parseExtra(text, owner) {
     const match = /^!iris\s+([a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(String(text || '').trim());
     if (!match) return null;
@@ -32,9 +32,10 @@ export function menu() {
         + '🏆 *Pontos virtuais*\n!iris perfil — participar\n!iris saldo | diario | ranking\n!iris sair — apagar seu perfil\n\n'
         + '⚙️ *Comandos personalizados*\n!iris comandos | usar nome\n\n'
         + '🔐 *Responsável*\n!iris on | off | abrir | fechar\n!iris criar nome texto | remover nome\n\n'
-        + '🤖 IA: !iris ia | !iris ia status | !iris ia perguntar texto';
+        + '💬 Diálogo local: !iris chat oi\n🎮 !iris velha | forca\n🛍️ !iris loja | comprar item | inventario\n⭐ !iris nivel | conquistas\n📜 !iris regras | definirregras texto';
 }
 export function makeFeatures() {
+    const localGames = makeLocalGames();
     const quizzes = new Map();
     const cooldown = new Map();
     async function readGroup(jid) {
@@ -55,7 +56,9 @@ export function makeFeatures() {
         if (name === 'menu') return menu();
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Modo de comandos.';
-        if (name === 'ia') return handleAI({arg,actor});
+        if (name === 'chat') return localReply(arg);
+        if (name === 'velha' || name === 'forca') return localGames({name,arg,jid,actor});
+        if (name === 'loja') return '🛍️ Loja virtual — sem dinheiro real.\n' + Object.entries(shop).map(([k,v])=>v.name+' — '+v.price+' moedas | !iris comprar '+k).join('\n');
         if (name === 'dado') return '🎲 Resultado: ' + randomInt(1,7);
         if (name === 'moeda') return '🪙 ' + (randomInt(2) ? 'Cara' : 'Coroa') + ' — sem apostas.';
         if (name === 'grupo') {
@@ -88,6 +91,19 @@ export function makeFeatures() {
         const {s,state} = await readGroup(jid);
         const id = hash(s.key, jid + ':' + actor);
         const player = state.players[id];
+        if (name === 'regras') return '📜 Regras do grupo: '+(state.rules || 'Não definidas.');
+        if (name === 'definirregras') {
+            if (!owner || !arg || arg.length>400) return 'Use !iris definirregras texto (até 400 caracteres).';
+            state.rules=arg; await save(s,state); return '📜 Regras atualizadas.';
+        }
+        if (name === 'comprar') {
+            const error=purchase(player,arg.toLowerCase());
+            if(error)return '🌸 '+error;
+            await save(s,state); return '🌸 Item virtual comprado!';
+        }
+        if (name === 'inventario') return player ? '🎒 '+(Object.keys(player.inventory||{}).filter(k=>Object.hasOwn(shop,k)).map(k=>shop[k].name).join(', ')||'Inventário vazio.') : 'Use !iris perfil.';
+        if (name === 'nivel') return player ? '⭐ Nível '+(1+Math.floor(player.xp/10))+' | '+player.xp+' XP.' : 'Use !iris perfil.';
+        if (name === 'conquistas') return player ? '🏅 Conquistas: '+['Primeiro perfil',...(player.xp>=10?['10 XP']:[]),...(player.xp>=50?['50 XP']:[]),...(Object.keys(player.inventory||{}).length?['Colecionador']:[])].join(', ') : 'Use !iris perfil.';
         if (name === 'perfil') {
             if (player) return '🌸 Perfil já ativo: Jogador ' + id.slice(0,6) + '.';
             if (Object.keys(state.players).length >= 200) return '🌸 Limite de perfis deste grupo atingido.';
