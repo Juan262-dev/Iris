@@ -11,6 +11,8 @@ node --check cloud-runtime/sticker.js
 node cloud-runtime/features.test.js
 node --check cloud-runtime/localFun.js
 node cloud-runtime/localFun.test.js
+node --check cloud-runtime/openaiPilot.js
+node cloud-runtime/openaiPilot.test.js
 npm --prefix cloud-runtime install --omit=dev --no-audit --no-fund
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
