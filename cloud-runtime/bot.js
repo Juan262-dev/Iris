@@ -2,7 +2,7 @@
 import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 
-export async function startHeadlessBot() {
+export async function startHeadlessBot(restartCount = 0) {
     if (process.env.IRIS_BOT_ENABLED !== 'true') return;
     const makeSocket = baileys.makeWASocket || baileys.default;
     if (typeof makeSocket !== 'function') throw new Error('Baileys socket export unavailable');
@@ -29,13 +29,28 @@ export async function startHeadlessBot() {
     sock.ev.on('creds.update', () => auth.saveCreds().catch(() => { process.exit(1); }));
     sock.ev.on('connection.update', async update => {
         if (closed) return;
-        if (update.connection === 'open') console.log('Iris: WhatsApp connected');
+        if (update.connection === 'open') {
+            restartCount = 0;
+            console.log('Iris: WhatsApp connected');
+        }
         if (update.connection === 'close') {
             closed = true;
-            // Deliberately avoid reconnect loops until this experimental runtime has been tested.
+            // Reconnect only for the expected registration restart, not for account restrictions.
             const status = update.lastDisconnect?.error?.output?.statusCode ?? update.lastDisconnect?.error?.statusCode;
             const reason = Number.isInteger(status) && status >= 100 && status <= 999 ? String(status) : 'unknown';
             console.log('Iris: WhatsApp disconnected; status=' + reason + '; registered=' + (auth.state.creds.registered === true));
+            // WhatsApp requests a fresh socket after successful device registration.
+            // Persist the registered state before starting a single bounded restart.
+            if (status === (baileys.DisconnectReason?.restartRequired ?? 515) && auth.state.creds.registered === true && restartCount < 1) {
+                try {
+                    await auth.saveCreds();
+                    console.log('Iris: restarting registered socket after status 515');
+                    await startHeadlessBot(restartCount + 1);
+                } catch {
+                    console.error('Iris: registered socket restart failed.');
+                }
+                return;
+            }
             console.log('Iris: check linked-device status before restarting.');
             return;
         }
