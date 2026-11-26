@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+npm --prefix cloud-runtime install --omit=dev --no-audit --no-fund
 node --check lib/Initialize/cloudPreview.js
 node --check lib/Initialize/cloudAuth.js
 node --check lib/Initialize/cloudStorage.js
@@ -13,7 +14,8 @@ node --check cloud-runtime/localFun.js
 node cloud-runtime/localFun.test.js
 node --check cloud-runtime/extras.js
 node cloud-runtime/extras.test.js
-npm --prefix cloud-runtime install --omit=dev --no-audit --no-fund
+node --check cloud-runtime/nextFeatures.js
+node cloud-runtime/nextFeatures.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
