@@ -1,6 +1,9 @@
 import { randomInt } from 'node:crypto';
 const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 const lines = [
+    [/\b(o que voce faz|o que sabe fazer|ajuda)\b/,['Posso organizar enquetes, jogar e converter mídias autorizadas. Veja !iris menu.']],
+    [/\b(boa sorte|parabens)\b/,['Valeu! Bom jogo para todos.','Que tal uma nova rodada?']],
+    [/\b(xadrez|jogar)\b/,['Para jogar, use !iris menu jogos. Depois envie as jogadas curtas.']],
     [/^(oi|ola|e ai|opa)( |$)/,['Oi! Como vai?','Olá! Quer jogar um quiz?']],
     [/\b(bom dia|boa tarde|boa noite)\b/,['Que seu dia seja tranquilo!','Olá! Espero que esteja tudo bem.']],
     [/\b(obrigado|obrigada|valeu)\b/,['Por nada!','Disponha!']],
@@ -54,7 +57,7 @@ export function makeLocalGames() {
         return null;
     };
 }
-export const shop = Object.freeze({estrela:{name:'⭐ Estrela',price:20},medalha:{name:'🏅 Medalha',price:40},trofeu:{name:'🏆 Troféu',price:80}});
+export const shop = Object.freeze({estrela:{name:'⭐ Estrela',price:20},medalha:{name:'🏅 Medalha',price:40},trofeu:{name:'🏆 Troféu',price:80},livro:{name:'📚 Livro de aventuras',price:35},cristal:{name:'💎 Cristal decorativo',price:65},coroa:{name:'👑 Coroa virtual',price:120}});
 export function purchase(player, item) {
     if(!Object.hasOwn(shop,item))return 'Item não encontrado. Use !iris loja.';
     if(!player)return 'Use !iris perfil para participar.';
