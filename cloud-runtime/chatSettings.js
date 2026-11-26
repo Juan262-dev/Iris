@@ -24,6 +24,7 @@ export async function loadChatSettings() {
     let groups = new Set(values);
     return {
         has: jid => groups.has(jid),
+        list: () => [...groups],
         async set(jid, enabled) {
             if (!jid.endsWith('@g.us')) throw new Error('Group required');
             const next = new Set(groups);
