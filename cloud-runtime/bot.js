@@ -4,6 +4,7 @@ import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
 import { makeSticker, makeTextSticker } from './sticker.js';
+import { makeVideoSticker, makeMeme } from './advancedMedia.js';
 import { makeLimiter } from './extras.js';
 
 export async function startHeadlessBot(restartCount = 0) {
@@ -92,7 +93,7 @@ export async function startHeadlessBot(restartCount = 0) {
                 // Only fresh, explicitly addressed text commands; never store chat contents.
                 const ts = Number(msg.messageTimestamp || 0);
                 if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
-                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || '';
+                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || msg.message?.videoMessage?.caption || '';
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
                 const owner = msg.key?.fromMe === true;
                 const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
@@ -109,7 +110,7 @@ export async function startHeadlessBot(restartCount = 0) {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (extra) {
-                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>makeSticker(m,baileys),textSticker:makeTextSticker }); }
+                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>m.message?.videoMessage?makeVideoSticker(m,baileys):makeSticker(m,baileys),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys) }); }
                     catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; console.error('Iris: individual command failed'); }
                 }
                 if (!closed && response) await sock.sendMessage(jid, typeof response === 'string' ? { text:response } : response, { quoted: msg });
