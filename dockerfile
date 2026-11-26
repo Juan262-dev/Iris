@@ -9,8 +9,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends git jq && \
     rm -rf /var/lib/apt/lists/*
 
-# Clonamos o repositório no diretório de trabalho (/app)
-RUN git clone https://github.com/KillovSky/Iris.git .
+# Use o código desta revisão, não clone uma versão externa.
+COPY . .
 
 # Altera a linha em index.js (Correção de erro 500)
 RUN sed -i 's/messageData.blockNumber = await kill.fetchBlocklist();/messageData.blockNumber = [];/' /app/lib/Commands/Main/Construct/index.js
@@ -23,7 +23,7 @@ RUN jq '.fixEscape.value = true' /app/lib/Databases/Configurations/config.json >
 RUN npm install --omit=dev
 
 # Força a atualização do pacote youtube-dl-exec (se necessário)
-RUN npm uninstall youtube-dl-exec && npm install youtube-dl-exec@latest --omit=dev
+# Preserve a versão declarada em package.json; não atualize durante o build.
 
 # Estágio 2: Ambiente de tempo de execução (Runtime)
 # Usando a imagem slim do Node.js para um tamanho menor
