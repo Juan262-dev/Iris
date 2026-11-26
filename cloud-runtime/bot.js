@@ -3,8 +3,9 @@ import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
-import { makeSticker, makeTextSticker } from './sticker.js';
-import { makeVideoSticker, makeMeme } from './advancedMedia.js';
+import { makeTextSticker } from './sticker.js';
+import { stickerCommand, sendSoundSticker } from './stickerCommands.js';
+import { makeMeme } from './advancedMedia.js';
 import { makeLimiter } from './extras.js';
 
 export async function startHeadlessBot(restartCount = 0) {
@@ -110,10 +111,13 @@ export async function startHeadlessBot(restartCount = 0) {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (extra) {
-                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>m.message?.videoMessage?makeVideoSticker(m,baileys):makeSticker(m,baileys),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys) }); }
+                    try { response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys) }); }
                     catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; console.error('Iris: individual command failed'); }
                 }
-                if (!closed && response) await sock.sendMessage(jid, typeof response === 'string' ? { text:response } : response, { quoted: msg });
+                if (!closed && response?.soundSticker) {
+                    try { await sendSoundSticker(sock,baileys,jid,response.soundSticker,msg); }
+                    catch { if(!closed)await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use !iris s para figurinha silenciosa.'},{quoted:msg}); }
+                } else if (!closed && response) await sock.sendMessage(jid, typeof response === 'string' ? { text:response } : response, { quoted: msg });
             }
         }).catch(() => console.error('Iris: command processing failed; check storage and connection.'));
     });
