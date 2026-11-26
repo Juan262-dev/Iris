@@ -106,7 +106,7 @@ export function makeFeatures() {
             const q = pool[randomInt(pool.length)];
             quizzes.set(jid,{...q,expires:Date.now()+60000});
             if (quizzes.size > 100) quizzes.delete(quizzes.keys().next().value);
-            return '🧠 *Quiz Íris*\n' + q.q + '\n' + q.options.map((v,i)=>(i+1)+'. '+v).join('\n') + '\nUse !iris resposta 1, 2 ou 3.';
+            return '🧠 *Quiz Íris*\n' + q.q + '\n' + q.options.map((v,i)=>(i+1)+'. '+v).join('\n') + '\nEnvie resposta 1, 2 ou 3.';
         }
         if (!actor) return '🌸 Não foi possível identificar o participante.';
         const {s,state} = await readGroup(jid);
@@ -195,6 +195,11 @@ export function makeFeatures() {
     handle.chessMove=({jid,actor,arg})=>chess({jid,actor,arg,activeOnly:true});
     handle.activity=async({jid,actor,command})=>{
         if(!actor)return null;
+        if(command.name==='resposta'){
+            const q=quizzes.get(jid);
+            if(!q||q.expires<Date.now()||!(/^[123]$/).test(command.arg))return null;
+            return handle({command,jid,actor});
+        }
         const {s,state}=await readGroup(jid);
         const id=hash(s.key,jid+':'+actor);
         const out=groupFeature({...command,state,id,activeOnly:true});
