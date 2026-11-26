@@ -30,7 +30,7 @@ const validName = v => /^[a-z0-9_-]{1,20}$/i.test(v);
 export function menu(category='') {
     const sections = {
         geral:'📋 *GERAL*\n!iris ping — conexão\n!iris status — situação\n!iris grupo — participantes\n!iris regras — regras',
-        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto\n!iris s — vídeo MP4 curto (5 s, 5 MB)\n!iris meme topo | rodapé — legenda de foto',
+        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto\n!iris s — vídeo MP4 (10 s, 10 MB, sem áudio)\n!iris meme topo | rodapé — legenda de foto',
         jogos:'🎮 *JOGOS*\n!iris velha | forca | quiz\n!iris resposta 1, 2 ou 3\n!iris numero — adivinhe o número\n!iris ppt pedra — pedra, papel ou tesoura\n!iris dado | moeda\n!iris xadrez novo medio — jogar contra o bot\n!iris xadrez desafio | aceitar — multiplayer\n!iris xadrez ajuda — regras, temas e ranking',
         diversao:'💬 *DIVERSÃO*\n!iris chat oi — diálogo local\n!iris piada | curiosidade',
         economia:'🏆 *ECONOMIA VIRTUAL*\n!iris perfil | saldo | diario | ranking\n!iris loja | comprar item | inventario\n!iris nivel | conquistas | sair\n!iris missoes | resgatar nome',
