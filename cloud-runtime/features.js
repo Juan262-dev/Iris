@@ -1,8 +1,9 @@
 import { createHmac, randomInt } from 'node:crypto';
 import { localReply, makeLocalGames, shop, purchase } from './localFun.js';
+import { createAI } from './openaiPilot.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','chat','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos']);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','chat','ia','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos']);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras']);
 export function parseExtra(text, owner) {
     const match = /^!iris\s+([a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(String(text || '').trim());
@@ -32,10 +33,11 @@ export function menu() {
         + '🏆 *Pontos virtuais*\n!iris perfil — participar\n!iris saldo | diario | ranking\n!iris sair — apagar seu perfil\n\n'
         + '⚙️ *Comandos personalizados*\n!iris comandos | usar nome\n\n'
         + '🔐 *Responsável*\n!iris on | off | abrir | fechar\n!iris criar nome texto | remover nome\n\n'
-        + '💬 Diálogo local: !iris chat oi\n🎮 !iris velha | forca\n🛍️ !iris loja | comprar item | inventario\n⭐ !iris nivel | conquistas\n📜 !iris regras | definirregras texto';
+        + '💬 Diálogo local: !iris chat oi\n🤖 Piloto IA: !iris ia status | perguntar texto\n🎮 !iris velha | forca\n🛍️ !iris loja | comprar item | inventario\n⭐ !iris nivel | conquistas\n📜 !iris regras | definirregras texto';
 }
 export function makeFeatures() {
     const localGames = makeLocalGames();
+    const ai = createAI();
     const quizzes = new Map();
     const cooldown = new Map();
     async function readGroup(jid) {
@@ -57,6 +59,7 @@ export function makeFeatures() {
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Modo de comandos.';
         if (name === 'chat') return localReply(arg);
+        if (name === 'ia') return ai({arg,actor,owner});
         if (name === 'velha' || name === 'forca') return localGames({name,arg,jid,actor});
         if (name === 'loja') return '🛍️ Loja virtual — sem dinheiro real.\n' + Object.entries(shop).map(([k,v])=>v.name+' — '+v.price+' moedas | !iris comprar '+k).join('\n');
         if (name === 'dado') return '🎲 Resultado: ' + randomInt(1,7);
