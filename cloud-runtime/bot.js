@@ -1,12 +1,13 @@
 // Experimental headless connection test, not the full Iris command engine.
 import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
+import { decideCommand, loadChatSettings } from './chatSettings.js';
 
 export async function startHeadlessBot(restartCount = 0) {
     if (process.env.IRIS_BOT_ENABLED !== 'true') return;
     const makeSocket = baileys.makeWASocket || baileys.default;
     if (typeof makeSocket !== 'function') throw new Error('Baileys socket export unavailable');
-    const allowedChats = new Set((process.env.IRIS_ALLOWED_CHATS || '').split(',').map(x => x.trim()).filter(Boolean));
+    const chats = await loadChatSettings();
     const pairingNumber = process.env.IRIS_PAIRING_PHONE || '';
     const auth = await useCloudAuthState('0', baileys);
     console.log('Iris: stored device registration: ' + (auth.state.creds.registered === true ? 'registered' : 'not_registered'));
@@ -26,6 +27,7 @@ export async function startHeadlessBot(restartCount = 0) {
     let pending = false;
     let closed = false;
     const seen = new Set();
+    let commandQueue = Promise.resolve();
     sock.ev.on('creds.update', () => auth.saveCreds().catch(() => { process.exit(1); }));
     sock.ev.on('connection.update', async update => {
         if (closed) return;
@@ -65,20 +67,38 @@ export async function startHeadlessBot(restartCount = 0) {
             }
         }
     });
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    sock.ev.on('messages.upsert', ({ messages, type }) => {
         if (closed || type !== 'notify') return;
-        for (const msg of messages || []) {
-            const jid = msg.key?.remoteJid;
-            const id = msg.key?.id;
-            // No message history, unsolicited replies, group surveillance or external AI calls.
-            if (!jid || !id || msg.key?.fromMe || !allowedChats.has(jid) || seen.has(id)) continue;
-            seen.add(id);
-            if (seen.size > 500) seen.delete(seen.values().next().value);
-            const text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim().toLowerCase();
-            try {
-                if (text === '!ping') await sock.sendMessage(jid, { text: 'Íris: online.' });
-                if (text === '!ajuda') await sock.sendMessage(jid, { text: 'Íris — modo de teste. Comandos: !ping, !ajuda.' });
-            } catch { console.error('Iris: test command delivery failed.'); }
-        }
+        commandQueue = commandQueue.then(async () => {
+            for (const msg of messages || []) {
+                if (closed) return;
+                const jid = msg.key?.remoteJid;
+                const id = msg.key?.id;
+                if (!jid || !id || seen.has(jid + ':' + id)) continue;
+                // Only fresh, explicitly addressed text commands; never store chat contents.
+                const ts = Number(msg.messageTimestamp || 0);
+                if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
+                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+                const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
+                if (!action) continue;
+                seen.add(jid + ':' + id);
+                if (seen.size > 500) seen.delete(seen.values().next().value);
+                let response;
+                if (action === 'on') {
+                    await chats.set(jid, true);
+                    response = '🌸 Íris — bot ativado neste grupo. Respondo apenas aos comandos !iris. Use somente com a autorização dos participantes. O responsável pode desativar com !iris off.';
+                } else if (action === 'off') {
+                    await chats.set(jid, false);
+                    response = '🌸 Íris — desativada neste grupo.';
+                } else if (action === 'ping') {
+                    response = '🌸 Íris — online!';
+                } else if (action === 'menu') {
+                    response = '🌸 Íris — Legião Z\n\n!iris ping — teste de conexão\n!iris menu — comandos\n!iris status — estado do bot\n\nResponsável: !iris on / !iris off';
+                } else if (action === 'status') {
+                    response = '🌸 Íris — conectada ao WhatsApp; grupo autorizado; modo de comandos de teste.';
+                }
+                if (!closed && response) await sock.sendMessage(jid, { text: response }, { quoted: msg });
+            }
+        }).catch(() => console.error('Iris: command processing failed; check storage and connection.'));
     });
 }
