@@ -2,12 +2,15 @@
 import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
+import { parseExtra, makeFeatures } from './features.js';
+import { makeSticker } from './sticker.js';
 
 export async function startHeadlessBot(restartCount = 0) {
     if (process.env.IRIS_BOT_ENABLED !== 'true') return;
     const makeSocket = baileys.makeWASocket || baileys.default;
     if (typeof makeSocket !== 'function') throw new Error('Baileys socket export unavailable');
     const chats = await loadChatSettings();
+    const features = makeFeatures();
     const pairingNumber = process.env.IRIS_PAIRING_PHONE || '';
     const auth = await useCloudAuthState('0', baileys);
     console.log('Iris: stored device registration: ' + (auth.state.creds.registered === true ? 'registered' : 'not_registered'));
@@ -78,9 +81,11 @@ export async function startHeadlessBot(restartCount = 0) {
                 // Only fresh, explicitly addressed text commands; never store chat contents.
                 const ts = Number(msg.messageTimestamp || 0);
                 if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
-                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '';
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
-                if (!action) continue;
+                const owner = msg.key?.fromMe === true;
+                const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
+                if (!action && !extra) continue;
                 seen.add(jid + ':' + id);
                 if (seen.size > 500) seen.delete(seen.values().next().value);
                 let response;
@@ -90,14 +95,11 @@ export async function startHeadlessBot(restartCount = 0) {
                 } else if (action === 'off') {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
-                } else if (action === 'ping') {
-                    response = '🌸 Íris — online!';
-                } else if (action === 'menu') {
-                    response = '🌸 Íris — Legião Z\n\n!iris ping — teste de conexão\n!iris menu — comandos\n!iris status — estado do bot\n\nResponsável: !iris on / !iris off';
-                } else if (action === 'status') {
-                    response = '🌸 Íris — conectada ao WhatsApp; grupo autorizado; modo de comandos de teste.';
+                } else if (extra) {
+                    const actor = owner ? (sock.user?.id || 'owner').split(':')[0] + '@self' : msg.key?.participant;
+                    response = await features({ command:extra, jid, actor, sock, msg, owner, sticker:m=>makeSticker(m,baileys) });
                 }
-                if (!closed && response) await sock.sendMessage(jid, { text: response }, { quoted: msg });
+                if (!closed && response) await sock.sendMessage(jid, typeof response === 'string' ? { text:response } : response, { quoted: msg });
             }
         }).catch(() => console.error('Iris: command processing failed; check storage and connection.'));
     });
