@@ -9,6 +9,8 @@ import { makeMeme } from './advancedMedia.js';
 import { makeLimiter } from './extras.js';
 import { isChessMove } from './persistentChess.js';
 import { shortActivity } from './community.js';
+import { megaShort } from './megaGames.js';
+import { studioCommand,studioNames } from './studio.js';
 import { convertMedia,converterNames } from './converters.js';
 import { setRuntime,makeJobQueue,reconnectDelay } from './runtimeStatus.js';
 
@@ -20,7 +22,7 @@ export async function startHeadlessBot(restartCount = 0) {
     const features = makeFeatures();
     setRuntime('whatsapp','conectando');
     const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
-    const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames]);
+    const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames]);
     let openedAt=0;
     const pairingNumber = process.env.IRIS_PAIRING_PHONE || '';
     const auth = await useCloudAuthState('0', baileys);
@@ -43,16 +45,33 @@ export async function startHeadlessBot(restartCount = 0) {
     const seen = new Set();
     const allowCommand = makeLimiter();
     let commandQueue = Promise.resolve();
+    let scheduleTimer=null;
+    let scheduleMinute='';
+    const scheduleTick=()=>{
+        const stamp=new Date().toISOString().slice(0,16);
+        if(closed||stamp===scheduleMinute)return;
+        scheduleMinute=stamp;
+        commandQueue=commandQueue.then(async()=>{
+            for(const jid of chats.list()){
+                if(closed||!chats.has(jid))continue;
+                try{const action=await features.schedule({jid,now:Date.parse(stamp+':00Z')});
+                    if(action&&!closed&&chats.has(jid))await sock.groupSettingUpdate(jid,action);
+                }catch{console.error('Iris: scheduled group update failed');}
+            }
+        }).catch(()=>console.error('Iris: schedule tick failed'));
+    };
     sock.ev.on('creds.update', () => auth.saveCreds().catch(() => { process.exit(1); }));
     sock.ev.on('connection.update', async update => {
         if (closed) return;
         if (update.connection === 'open') {
             openedAt=Date.now();
             setRuntime('whatsapp','conectado');
+            if(!scheduleTimer){scheduleTimer=setInterval(scheduleTick,30000);scheduleTimer.unref?.();}
             console.log('Iris: WhatsApp connected');
         }
         if (update.connection === 'close') {
             closed = true;
+            if(scheduleTimer){clearInterval(scheduleTimer);scheduleTimer=null;}
             // Reconnect only for the expected registration restart, not for account restrictions.
             const status = update.lastDisconnect?.error?.output?.statusCode ?? update.lastDisconnect?.error?.statusCode;
             const reason = Number.isInteger(status) && status >= 100 && status <= 999 ? String(status) : 'unknown';
@@ -101,7 +120,7 @@ export async function startHeadlessBot(restartCount = 0) {
             catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use !iris s.'},{quoted:msg});}
         }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
     }
-    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name)});
+    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg)});
     sock.ev.on('messages.upsert', ({ messages, type }) => {
         if (closed || type !== 'notify') return;
         commandQueue = commandQueue.then(async () => {
@@ -116,10 +135,13 @@ export async function startHeadlessBot(restartCount = 0) {
                 const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || msg.message?.videoMessage?.caption || '';
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
                 const owner = msg.key?.fromMe === true;
-                const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
+                let extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
+                if(!extra&&!action&&chats.has(jid)&&jid.endsWith('@g.us')&&/^[./#][a-z]+(?:\s|$)/i.test(text)){
+                    try{extra=await features.alternate({jid,text,owner});}catch{console.error('Iris: alternate prefix lookup failed');}
+                }
                 const plain = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
                 const shortMove = !action && !extra && chats.has(jid) && jid.endsWith('@g.us') && isChessMove(plain);
-                const activity=!action&&!extra&&!shortMove&&chats.has(jid)&&jid.endsWith('@g.us')?shortActivity(plain):null;
+                const activity=!action&&!extra&&!shortMove&&chats.has(jid)&&jid.endsWith('@g.us')?(shortActivity(plain)||megaShort(plain)):null;
                 if (!action && !extra && !shortMove && !activity) continue;
                 seen.add(jid + ':' + id);
                 if (seen.size > 500) seen.delete(seen.values().next().value);
