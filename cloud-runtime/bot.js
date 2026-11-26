@@ -9,6 +9,8 @@ export async function startHeadlessBot() {
     const allowedChats = new Set((process.env.IRIS_ALLOWED_CHATS || '').split(',').map(x => x.trim()).filter(Boolean));
     const pairingNumber = process.env.IRIS_PAIRING_PHONE || '';
     const auth = await useCloudAuthState('0', baileys);
+    console.log('Iris: stored device registration: ' + (auth.state.creds.registered === true ? 'registered' : 'not_registered'));
+    if (process.env.IRIS_DIAGNOSTIC_ONLY === 'true') return;
     if (!auth.state.creds.registered && (!/^\d{8,15}$/.test(pairingNumber) || process.env.IRIS_ALLOW_PAIRING !== 'true')) {
         console.log('Iris: initial pairing is not enabled.');
         return;
@@ -31,7 +33,10 @@ export async function startHeadlessBot() {
         if (update.connection === 'close') {
             closed = true;
             // Deliberately avoid reconnect loops until this experimental runtime has been tested.
-            console.log('Iris: WhatsApp disconnected; check the linked-device status before restarting.');
+            const status = update.lastDisconnect?.error?.output?.statusCode ?? update.lastDisconnect?.error?.statusCode;
+            const reason = Number.isInteger(status) && status >= 100 && status <= 999 ? String(status) : 'unknown';
+            console.log('Iris: WhatsApp disconnected; status=' + reason + '; registered=' + (auth.state.creds.registered === true));
+            console.log('Iris: check linked-device status before restarting.');
             return;
         }
         if (update.qr && !auth.state.creds.registered && !pending && process.env.IRIS_ALLOW_PAIRING === 'true') {
