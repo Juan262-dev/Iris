@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { Chess } from 'chess.js';
+import { renderBoard } from './chessBoard.js';
 
 const glyph={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'};
 export function boardText(game) {
@@ -7,10 +8,11 @@ export function boardText(game) {
 }
 export function makeChess({choose=randomInt,now=Date.now}={}) {
     const games=new Map();
-    return ({jid,actor,arg})=>{
+    return async ({jid,actor,arg})=>{
         if(!actor)return '🌸 Participante não identificado.';
         const key=jid+':'+actor;
-        const input=String(arg||'').trim().toLowerCase();
+        const raw=String(arg||'').trim().toLowerCase();
+        const input=raw.replace(/^([a-h][1-8])\s+([a-h][1-8][qrbn]?)$/,'$1$2');
         let g=games.get(key);
         if(g&&g.expires<=now()){games.delete(key);g=undefined;}
         if(input==='sair'){games.delete(key);return '♟️ Partida encerrada.';}
@@ -19,8 +21,12 @@ export function makeChess({choose=randomInt,now=Date.now}={}) {
             if(games.size>100)games.delete(games.keys().next().value);
         }
         if(!g)return '♟️ Use !iris xadrez novo para iniciar.';
-        const board=()=> '♟️ *Xadrez — você joga com as brancas*\n'+boardText(g.game);
-        if(!input||input==='novo'||input==='tabuleiro')return board()+'\nUse !iris xadrez e2e4 (promoção: e7e8q).';
+        const board=async (status)=>{
+            const caption='♟️ *Xadrez — você joga com as brancas*\n'+status;
+            try { return {image:await renderBoard(g.game,g.game.history({verbose:true}).at(-1)),caption}; }
+            catch { console.error('Iris: chess board rendering failed'); return caption+'\n'+boardText(g.game); }
+        };
+        if(!input||input==='novo'||input==='tabuleiro')return board('Use !iris xadrez e2e4 (promoção: e7e8q).');
         if(!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(input))return '♟️ Informe origem e destino, por exemplo !iris xadrez e2e4.';
         try{g.game.move({from:input.slice(0,2),to:input.slice(2,4),...(input.length===5?{promotion:input[4]}:{})});}
         catch{return '♟️ Jogada inválida. Consulte !iris xadrez tabuleiro.';}
@@ -29,13 +35,13 @@ export function makeChess({choose=randomInt,now=Date.now}={}) {
             games.delete(key);
             return g.game.isCheckmate()?(g.game.turn()==='b'?'Você venceu por xeque-mate!':'Íris venceu por xeque-mate!'):'Empate!';
         };
-        let end=result();if(end)return board()+'\n'+end;
+        let end=result();if(end)return board(end);
         const moves=g.game.moves({verbose:true});
         const chosen=moves[choose(moves.length)];
         g.game.move({from:chosen.from,to:chosen.to,...(chosen.promotion?{promotion:chosen.promotion}:{})});
         end=result();
         g.expires=now()+30*60000;
-        return board()+'\nÍris jogou: '+chosen.from+chosen.to+(chosen.promotion||'')+'\n'+(end||(g.game.isCheck()?'Xeque! Sua vez.':'Sua vez.'));
+        return board('Sua jogada: '+input+'\nÍris jogou: '+chosen.from+chosen.to+(chosen.promotion||'')+'\n'+(end||(g.game.isCheck()?'Xeque! Sua vez.':'Sua vez.')));
     };
 }
 
