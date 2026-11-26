@@ -21,6 +21,10 @@ node --check cloud-runtime/advancedMedia.js
 node cloud-runtime/advancedFeatures.test.js
 node --check cloud-runtime/stickerCommands.js
 node cloud-runtime/stickerCommands.test.js
+node --check cloud-runtime/community.js
+node --check cloud-runtime/converters.js
+node --check cloud-runtime/runtimeStatus.js
+node cloud-runtime/community.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
