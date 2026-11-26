@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import { Chess } from 'chess.js';
+import sharp from 'sharp';
+import { makePersistentChess,pickMove } from './persistentChess.js';
+import { boardSvg } from './chessBoard.js';
+import { memeImage,videoToSticker } from './advancedMedia.js';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp,readFile,rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+let saved={players:{},custom:{}};
+const io={readGroup:async()=>({s:{key:Buffer.alloc(32,7)},state:structuredClone(saved)}),save:async(s,state)=>{saved=structuredClone(state)},choose:()=>0};
+let play=makePersistentChess(io);
+const a={jid:'test@g.us',actor:'a'}, b={jid:'test@g.us',actor:'b'};
+const initial=await play({...a,arg:'novo medio'});
+assert.ok(initial.image);
+const moved=await play({...a,arg:'e2e4'});
+assert.match(moved.caption,/Íris jogou/);
+assert.notDeepEqual(initial.image,moved.image);
+play=makePersistentChess(io);
+assert.deepEqual((await play({...a,arg:'tabuleiro'})).image,moved.image);
+assert.match(await play({...a,arg:'tema madeira'}),/selecionado/);
+assert.notDeepEqual((await play({...a,arg:'tabuleiro'})).image,moved.image);
+assert.match(await play({...a,arg:'sair'}),/desistência/);
+assert.match(await play({...a,arg:'stats'}),/Derrotas: 1/);
+assert.match(await play({...a,arg:'desafio'}),/Desafio aberto/);
+assert.match(await play({...a,arg:'aceitar'}),/outro participante/);
+assert.match((await play({...b,arg:'aceitar'})).caption,/multiplayer/);
+assert.match(await play({...b,arg:'e7e5'}),/Aguarde/);
+assert.ok((await play({...a,arg:'e2e4'})).image);
+assert.ok((await play({...b,arg:'e7e5'})).image);
+assert.match(await play({...b,arg:'sair'}),/desistência/);
+assert.match(await play({...a,arg:'stats'}),/Vitórias: 1/);
+assert.match(await play({...b,arg:'stats'}),/Derrotas: 1/);
+assert.match(await play({...a,arg:'ranking'}),/Ranking/);
+assert.match(await play({...a,arg:'apagar'}),/removidos/);
+assert.match(await play({...a,arg:'stats'}),/Vitórias: 0/);
+const game=new Chess();game.move('e4');
+const fen=game.fen();
+for(const level of ['facil','medio','dificil']){
+    const m=pickMove(game,level,()=>0);assert.ok(m);assert.equal(game.fen(),fen);
+}
+assert.notEqual(boardSvg(game,null,'madeira'),boardSvg(game,null,'escuro'));
+const sample=await sharp({create:{width:64,height:64,channels:3,background:'#547d6a'}}).png().toBuffer();
+const meme=await memeImage(sample,'Olá <&> | Rodapé');
+const meta=await sharp(meme.image).metadata();assert.equal(meta.width,720);assert.equal(meta.format,'jpeg');
+await assert.rejects(()=>videoToSticker(Buffer.from('invalid')));
+console.log('Iris: persistent chess, multiplayer, difficulty, themes and meme tests passed');
+const dir=await mkdtemp(join(tmpdir(),'iris-video-test-'));
+try{
+    const src=join(dir,'sample.mp4');
+    execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','lavfi','-i','testsrc2=size=64x64:rate=6','-t','1','-c:v','mpeg4',src],{timeout:15000});
+    const out=await videoToSticker(await readFile(src));
+    const m=await sharp(out.sticker,{animated:true}).metadata();
+    assert.equal(m.width,512);assert.ok(m.pages>1);
+    console.log('Iris: MP4 animated sticker tests passed');
+}finally{await rm(dir,{recursive:true,force:true});}
