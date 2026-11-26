@@ -30,7 +30,7 @@ const validName = v => /^[a-z0-9_-]{1,20}$/i.test(v);
 export function menu(category='') {
     const sections = {
         geral:'📋 *GERAL*\n!iris ping — conexão\n!iris status — situação\n!iris grupo — participantes\n!iris regras — regras',
-        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto\n!iris s — vídeo MP4 (10 s, 10 MB, sem áudio)\n!iris slonga — MP4 até 20 s, 15 MB (experimental)\n!iris som — MP4 com áudio (10 s)\n!iris som 20 — áudio e 20 s experimentais\nEnvie com legenda ou responda à mídia autorizada.\n!iris meme topo | rodapé — legenda de foto',
+        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto\n!iris s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n!iris slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n!iris som — MP4 com áudio (primeiros 10 s)\n!iris som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n!iris meme topo | rodapé — legenda de foto',
         jogos:'🎮 *JOGOS*\n!iris velha | forca | quiz\n!iris resposta 1, 2 ou 3\n!iris numero — adivinhe o número\n!iris ppt pedra — pedra, papel ou tesoura\n!iris dado | moeda\n!iris xadrez novo medio — jogar contra o bot\n!iris xadrez desafio | aceitar — multiplayer\n!iris xadrez ajuda — regras, temas e ranking',
         diversao:'💬 *DIVERSÃO*\n!iris chat oi — diálogo local\n!iris piada | curiosidade',
         economia:'🏆 *ECONOMIA VIRTUAL*\n!iris perfil | saldo | diario | ranking\n!iris loja | comprar item | inventario\n!iris nivel | conquistas | sair\n!iris missoes | resgatar nome',
