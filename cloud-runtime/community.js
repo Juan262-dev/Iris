@@ -123,6 +123,6 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
     return null;
 }
 export function shortActivity(text){
-    const m=/^(casa|voto)\s+([1-9])$/i.exec(String(text||'').trim());
-    return m?{name:m[1].toLowerCase()==='casa'?'velhadupla':'votar',arg:m[2]}:null;
+    const m=/^(casa|voto|resposta)\s+([1-9])$/i.exec(String(text||'').trim());
+    return m?{name:m[1].toLowerCase()==='casa'?'velhadupla':m[1].toLowerCase()==='resposta'?'resposta':'votar',arg:m[2]}:null;
 }
