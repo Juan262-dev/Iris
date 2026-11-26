@@ -15,7 +15,7 @@ export function selectMedia(msg){
     };
     const select=body=>{
         if(!body||body.viewOnceMessage||body.viewOnceMessageV2||body.viewOnceMessageV2Extension||body.ephemeralMessage)return null;
-        for(const type of ['videoMessage','imageMessage','documentMessage']){
+        for(const type of ['videoMessage','imageMessage','documentMessage','stickerMessage','audioMessage']){
             const media=body[type];
             if(eligible(media))return {key:msg.key,message:{[type]:media}};
         }
