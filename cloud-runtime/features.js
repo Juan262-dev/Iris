@@ -1,10 +1,11 @@
 import { createHmac, randomInt } from 'node:crypto';
 import { localReply, makeLocalGames, shop, purchase } from './localFun.js';
 import { makeExtras } from './extras.js';
-import { makeChess, mission, welcomeMessage } from './nextFeatures.js';
+import { mission, welcomeMessage } from './nextFeatures.js';
+import { makePersistentChess } from './persistentChess.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','chat','ia','piada','curiosidade','ppt','numero','xadrez','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos']);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos']);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas']);
 export function parseExtra(text, owner) {
     const match = /^!iris\s+([a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(String(text || '').trim());
@@ -29,8 +30,8 @@ const validName = v => /^[a-z0-9_-]{1,20}$/i.test(v);
 export function menu(category='') {
     const sections = {
         geral:'📋 *GERAL*\n!iris ping — conexão\n!iris status — situação\n!iris grupo — participantes\n!iris regras — regras',
-        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto',
-        jogos:'🎮 *JOGOS*\n!iris velha | forca | quiz\n!iris resposta 1, 2 ou 3\n!iris numero — adivinhe o número\n!iris ppt pedra — pedra, papel ou tesoura\n!iris dado | moeda\n!iris xadrez — jogar contra o bot',
+        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto\n!iris s — vídeo MP4 curto (5 s, 5 MB)\n!iris meme topo | rodapé — legenda de foto',
+        jogos:'🎮 *JOGOS*\n!iris velha | forca | quiz\n!iris resposta 1, 2 ou 3\n!iris numero — adivinhe o número\n!iris ppt pedra — pedra, papel ou tesoura\n!iris dado | moeda\n!iris xadrez novo medio — jogar contra o bot\n!iris xadrez desafio | aceitar — multiplayer\n!iris xadrez ajuda — regras, temas e ranking',
         diversao:'💬 *DIVERSÃO*\n!iris chat oi — diálogo local\n!iris piada | curiosidade',
         economia:'🏆 *ECONOMIA VIRTUAL*\n!iris perfil | saldo | diario | ranking\n!iris loja | comprar item | inventario\n!iris nivel | conquistas | sair\n!iris missoes | resgatar nome',
         admin:'🛡️ *RESPONSÁVEL*\n!iris on | off | abrir | fechar\n!iris definirregras texto\n!iris criar nome texto | remover nome\n!iris comandos | usar nome\n!iris boasvindas on | off'
@@ -44,7 +45,7 @@ export function menu(category='') {
 export function makeFeatures() {
     const localGames = makeLocalGames();
     const extras = makeExtras();
-    const chess = makeChess();
+    const chess = makePersistentChess({readGroup,save});
     const welcomeCooldown = new Map();
     const quizzes = new Map();
     const cooldown = new Map();
@@ -61,7 +62,7 @@ export function makeFeatures() {
         await request(s, 'POST', { session_id:s.sessionId, item_type:'auth', item_id:'snapshot',
             encrypted_payload:seal(state,s), updated_at:new Date().toISOString() });
     }
-    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker }) {
+    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme }) {
         const { name, arg } = command;
         if (name === 'menu') return menu(arg);
         if (name === 'ping') return '🌸 Íris — online!';
@@ -84,13 +85,13 @@ export function makeFeatures() {
             catch { return '🌸 Não foi possível alterar o grupo. Seu número precisa ser administrador.'; }
             return name === 'abrir' ? '🌸 Grupo aberto para mensagens.' : '🌸 Grupo restrito a administradores.';
         }
-        if (name === 's' || name === 'figurinha' || name === 'texto') {
+        if (name === 's' || name === 'figurinha' || name === 'texto' || name === 'meme') {
             const key = jid + ':' + actor;
             const now = Date.now();
             if (now - (cooldown.get(key) || 0) < 10000) return '🌸 Aguarde 10 segundos entre figurinhas.';
             cooldown.set(key,now);
             if (cooldown.size > 1000) cooldown.delete(cooldown.keys().next().value);
-            return name==='texto' ? await textSticker(arg) : await sticker(msg);
+            return name==='texto' ? await textSticker(arg) : name==='meme' ? await meme(msg,arg) : await sticker(msg);
         }
         if (name === 'quiz') {
             const old = quizzes.get(jid);
