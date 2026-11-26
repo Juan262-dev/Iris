@@ -6,11 +6,17 @@ import { makePersistentChess } from './persistentChess.js';
 import { groupFeature,groupCommands,groupOwnerCommands } from './community.js';
 import { converterNames } from './converters.js';
 import { runtimeStatus } from './runtimeStatus.js';
+import { megaGame,gameNames } from './megaGames.js';
+import { megaFeature,economyNames,adminNames,removeMegaProfile,scheduleAction } from './megaCommunity.js';
+import { studioNames } from './studio.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames]);
-const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands]);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames]);
+const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup']);
 export function parseExtra(text, owner) {
+    text=String(text||'').trim();
+    const alias=/^!(ping|s|menu|fig)(?:\s+([\s\S]{1,500}))?$/i.exec(text);
+    if(alias)text='!iris '+(alias[1].toLowerCase()==='fig'?'s':alias[1].toLowerCase())+(alias[2]?' '+alias[2]:'');
     const match = /^!iris\s+([a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(String(text || '').trim());
     if (!match) return null;
     const name = match[1].toLowerCase();
@@ -32,12 +38,12 @@ const hash = (key, value) => createHmac('sha256', key).update(value).digest('hex
 const validName = v => /^[a-z0-9_-]{1,20}$/i.test(v);
 export function menu(category='') {
     const sections = {
-        geral:'📋 *GERAL*\n!iris ping — conexão\n!iris status — situação\n!iris grupo — participantes\n!iris regras — regras\n!iris diagnostico — estado do bot',
-        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto\n!iris s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n!iris slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n!iris som — MP4 com áudio (primeiros 10 s)\n!iris som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n!iris meme topo | rodapé — legenda de foto\n!iris imagem — responda a figurinha\n!iris audio | voz — responda a vídeo ou áudio',
-        jogos:'🎮 *JOGOS*\n!iris velha | forca | quiz\n!iris resposta 1, 2 ou 3\n!iris numero — adivinhe o número\n!iris ppt pedra — pedra, papel ou tesoura\n!iris dado | moeda\n!iris xadrez novo medio — jogar contra o bot\n!iris xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n!iris xadrez ajuda — regras, temas e ranking\n!iris velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n!iris aventura novo — missão de exploração\n!iris quiz ciencia | geografia | geral',
+        geral:'📋 *GERAL*\n!iris ping — conexão\n!iris status — situação\n!iris grupo — participantes\n!iris regras — regras\n!iris diagnostico — estado do bot\n!iris versao | menuimagem\nAtalhos: !s, !ping, !menu, !fig',
+        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n!iris texto frase — figurinha de texto\n!iris s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n!iris slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n!iris som — MP4 com áudio (primeiros 10 s)\n!iris som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n!iris meme topo | rodapé — legenda de foto\n!iris imagem — responda a figurinha\n!iris audio | voz — responda a vídeo ou áudio\n!iris filtro cinza | sepia | nitido | invertido\n!iris semfundo | transparente #ffffff — fundo uniforme\n!iris autor nome — metadados da figurinha\n!iris trecho 30 — até 20 s a partir de 30 s\n!iris gif | comprimir — MP4',
+        jogos:'🎮 *JOGOS*\n!iris velha | forca | quiz\n!iris resposta 1, 2 ou 3\n!iris numero — adivinhe o número\n!iris ppt pedra — pedra, papel ou tesoura\n!iris dado | moeda\n!iris xadrez novo medio — jogar contra o bot\n!iris xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n!iris xadrez ajuda — regras, temas e ranking\n!iris velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n!iris aventura novo — missão de exploração\n!iris quiz ciencia | geografia | geral\n!iris uno novo | entrar | iniciar | mao\n!iris naval desafio | aceitar — tiro a1\n!iris rpg classe explorador | mapa | explorar\n!iris campeonato entrar | ver',
         diversao:'💬 *DIVERSÃO*\n!iris chat oi — diálogo local\n!iris piada | curiosidade',
-        economia:'🏆 *ECONOMIA VIRTUAL*\n!iris perfil | saldo | diario | ranking\n!iris loja | comprar item | inventario\n!iris nivel | conquistas | sair\n!iris missoes | resgatar nome\n!iris banco | depositar 10 | sacar 10\n!iris transferir codigo 10\n!iris semanal | profissao | trabalhar | tarefadiaria',
-        admin:'🛡️ *RESPONSÁVEL*\n!iris on | off | abrir | fechar\n!iris definirregras texto\n!iris criar nome texto | remover nome\n!iris comandos | usar nome\n!iris boasvindas on | off\n!iris mensagembemvindo texto\n!iris avisogrupo texto\n!iris enquete pergunta | opção 1 | opção 2\n!iris votar 1 | votos | encerrarenquete'
+        economia:'🏆 *ECONOMIA VIRTUAL*\n!iris perfil | saldo | diario | ranking\n!iris loja | comprar item | inventario\n!iris nivel | conquistas | sair\n!iris missoes | resgatar nome\n!iris banco | depositar 10 | sacar 10\n!iris transferir codigo 10\n!iris semanal | profissao | trabalhar | tarefadiaria\n!iris empresa | propriedade | evento participar\n!iris mercado | anunciar item preco | adquirir codigo\n!iris vitrine | mochila',
+        admin:'🛡️ *RESPONSÁVEL*\n!iris on | off | abrir | fechar\n!iris definirregras texto\n!iris criar nome texto | remover nome\n!iris comandos | usar nome\n!iris boasvindas on | off\n!iris mensagembemvindo texto\n!iris avisogrupo texto\n!iris enquete pergunta | opção 1 | opção 2\n!iris votar 1 | votos | encerrarenquete\n!iris agenda 08:00 22:00 | off\n!iris advertir codigo motivo | advertencias codigo\n!iris prefixo . | padrao\n!iris backup | sugestoes\nTodos: !iris sugestao texto'
     };
     const key=category.trim().toLowerCase();
     const header='╭─ 🌸 *ÍRIS CLOUD*\n│ Legião Z • versão adaptada\n│ Sem IA externa\n╰──────────────';
@@ -65,7 +71,7 @@ export function makeFeatures() {
         await request(s, 'POST', { session_id:s.sessionId, item_type:'auth', item_id:'snapshot',
             encrypted_payload:seal(state,s), updated_at:new Date().toISOString() });
     }
-    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert }) {
+    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert, studio }) {
         const { name, arg } = command;
         if (name === 'menu') return menu(arg);
         if (name === 'ping') return '🌸 Íris — online!';
@@ -89,13 +95,13 @@ export function makeFeatures() {
             catch { return '🌸 Não foi possível alterar o grupo. Seu número precisa ser administrador.'; }
             return name === 'abrir' ? '🌸 Grupo aberto para mensagens.' : '🌸 Grupo restrito a administradores.';
         }
-        if (name === 's' || name === 'figurinha' || name === 'slonga' || name === 'som' || name === 'texto' || name === 'meme' || converterNames.includes(name)) {
+        if (name === 's' || name === 'figurinha' || name === 'slonga' || name === 'som' || name === 'texto' || name === 'meme' || converterNames.includes(name) || studioNames.includes(name)) {
             const key = jid + ':' + actor;
             const now = Date.now();
             if (now - (cooldown.get(key) || 0) < 10000) return '🌸 Aguarde 10 segundos entre figurinhas.';
             cooldown.set(key,now);
             if (cooldown.size > 1000) cooldown.delete(cooldown.keys().next().value);
-            return name==='texto' ? await textSticker(arg) : name==='meme' ? await meme(msg,arg) : converterNames.includes(name) ? await convert(msg,name) : await sticker(msg,name,arg);
+            return name==='texto' ? await textSticker(arg) : name==='meme' ? await meme(msg,arg) : converterNames.includes(name) ? await convert(msg,name) : studioNames.includes(name) ? await studio(msg,name,arg) : await sticker(msg,name,arg);
         }
         if (name === 'quiz') {
             const old = quizzes.get(jid);
@@ -112,6 +118,11 @@ export function makeFeatures() {
         const {s,state} = await readGroup(jid);
         const id = hash(s.key, jid + ':' + actor);
         const player = state.players[id];
+        if(gameNames.includes(name)||economyNames.includes(name)||adminNames.includes(name)){
+            const out=await (gameNames.includes(name)?megaGame({name,arg,state,id,owner}):megaFeature({name,arg,state,id,owner}));
+            if(out?.changed)await save(s,state);
+            return out?.text??null;
+        }
         if(groupCommands.includes(name)){
             const out=groupFeature({name,arg,state,id,owner});
             if(out?.changed)await save(s,state);
@@ -150,7 +161,7 @@ export function makeFeatures() {
             return '🌸 Perfil virtual criado: Jogador ' + id.slice(0,6) + '. Somente pontos de jogo são guardados. Use !iris sair para apagar.';
         }
         if (name === 'sair') {
-            if (player) { delete state.players[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
+            if (player) { delete state.players[id]; removeMegaProfile(state,id); if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
             return '🌸 Seu perfil virtual foi removido.';
         }
         if (name === 'saldo') return player ? '🌸 Saldo: ' + player.coins + ' moedas virtuais | XP: ' + player.xp : '🌸 Use !iris perfil para participar.';
@@ -202,9 +213,21 @@ export function makeFeatures() {
         }
         const {s,state}=await readGroup(jid);
         const id=hash(s.key,jid+':'+actor);
-        const out=groupFeature({...command,state,id,activeOnly:true});
+        const out=gameNames.includes(command.name)?await megaGame({...command,state,id,activeOnly:true}):groupFeature({...command,state,id,activeOnly:true});
         if(out?.changed)await save(s,state);
         return out?.text??null;
+    };
+    handle.alternate=async({jid,text,owner})=>{
+        const match=/^([./#])([a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(String(text||'').trim());
+        if(!match)return null;
+        const {state}=await readGroup(jid);
+        if(state.mega?.prefix!==match[1])return null;
+        const cmd=parseExtra('!iris '+match[2]+(match[3]?' '+match[3]:''),false);
+        return cmd;
+    };
+    handle.schedule=async({jid,now})=>{
+        const {state}=await readGroup(jid);
+        return scheduleAction(state.mega?.schedule,now);
     };
     handle.welcome=async({jid,action,count})=>{
         const message=welcomeMessage(action,count);
