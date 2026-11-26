@@ -1,9 +1,9 @@
 import { createHmac, randomInt } from 'node:crypto';
 import { localReply, makeLocalGames, shop, purchase } from './localFun.js';
-import { createAI } from './openaiPilot.js';
+import { makeExtras } from './extras.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','chat','ia','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos']);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','chat','ia','piada','curiosidade','ppt','numero','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos']);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras']);
 export function parseExtra(text, owner) {
     const match = /^!iris\s+([a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(String(text || '').trim());
@@ -25,19 +25,24 @@ const questions = [
 const fresh = () => ({ players: {}, custom: {} });
 const hash = (key, value) => createHmac('sha256', key).update(value).digest('hex');
 const validName = v => /^[a-z0-9_-]{1,20}$/i.test(v);
-export function menu() {
-    return '🌸 *Íris — Legião Z*\n\n'
-        + '📋 *Geral*\n!iris menu | ping | status | grupo\n\n'
-        + '🖼️ *Figurinhas*\n!iris s — envie uma imagem com essa legenda\n\n'
-        + '🎮 *Jogos*\n!iris dado | moeda | quiz\n!iris resposta 1, 2 ou 3\n\n'
-        + '🏆 *Pontos virtuais*\n!iris perfil — participar\n!iris saldo | diario | ranking\n!iris sair — apagar seu perfil\n\n'
-        + '⚙️ *Comandos personalizados*\n!iris comandos | usar nome\n\n'
-        + '🔐 *Responsável*\n!iris on | off | abrir | fechar\n!iris criar nome texto | remover nome\n\n'
-        + '💬 Diálogo local: !iris chat oi\n🤖 Piloto IA: !iris ia status | perguntar texto\n🎮 !iris velha | forca\n🛍️ !iris loja | comprar item | inventario\n⭐ !iris nivel | conquistas\n📜 !iris regras | definirregras texto';
+export function menu(category='') {
+    const sections = {
+        geral:'📋 *GERAL*\n!iris ping — conexão\n!iris status — situação\n!iris grupo — participantes\n!iris regras — regras',
+        midia:'🖼️ *MÍDIA*\n!iris s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)',
+        jogos:'🎮 *JOGOS*\n!iris velha | forca | quiz\n!iris resposta 1, 2 ou 3\n!iris numero — adivinhe o número\n!iris ppt pedra — pedra, papel ou tesoura\n!iris dado | moeda',
+        diversao:'💬 *DIVERSÃO*\n!iris chat oi — diálogo local\n!iris piada | curiosidade',
+        economia:'🏆 *ECONOMIA VIRTUAL*\n!iris perfil | saldo | diario | ranking\n!iris loja | comprar item | inventario\n!iris nivel | conquistas | sair',
+        admin:'🛡️ *RESPONSÁVEL*\n!iris on | off | abrir | fechar\n!iris definirregras texto\n!iris criar nome texto | remover nome\n!iris comandos | usar nome'
+    };
+    const key=category.trim().toLowerCase();
+    const header='╭─ 🌸 *ÍRIS CLOUD*\n│ Legião Z • versão adaptada\n│ Sem IA externa\n╰──────────────';
+    if(key && Object.hasOwn(sections,key))return header+'\n\n'+sections[key];
+    if(key)return 'Categorias: '+Object.keys(sections).join(', ')+'. Use !iris menu categoria.';
+    return header+'\n\n'+Object.values(sections).join('\n\n')+'\n\nAtalho: !iris menu jogos (ou outra categoria).';
 }
 export function makeFeatures() {
     const localGames = makeLocalGames();
-    const ai = createAI();
+    const extras = makeExtras();
     const quizzes = new Map();
     const cooldown = new Map();
     async function readGroup(jid) {
@@ -55,11 +60,12 @@ export function makeFeatures() {
     }
     return async function handle({ command, jid, actor, sock, msg, owner, sticker }) {
         const { name, arg } = command;
-        if (name === 'menu') return menu();
+        if (name === 'menu') return menu(arg);
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Modo de comandos.';
         if (name === 'chat') return localReply(arg);
-        if (name === 'ia') return ai({arg,actor,owner});
+        if (name === 'ia') return '🌸 IA externa desativada. Use !iris chat para diálogos locais.';
+        if (['piada','curiosidade','ppt','numero'].includes(name)) return extras({name,arg,jid,actor});
         if (name === 'velha' || name === 'forca') return localGames({name,arg,jid,actor});
         if (name === 'loja') return '🛍️ Loja virtual — sem dinheiro real.\n' + Object.entries(shop).map(([k,v])=>v.name+' — '+v.price+' moedas | !iris comprar '+k).join('\n');
         if (name === 'dado') return '🎲 Resultado: ' + randomInt(1,7);
