@@ -1,6 +1,5 @@
 import { randomInt } from 'node:crypto';
-export function makeExtras() {
-    const games=new Map();
+export function makeExtras(games=new Map()) {
     const jokes=['Por que a bicicleta caiu? Porque estava sem equilíbrio!','Qual é o café mais perigoso? O ex-presso!','Por que o computador foi ao médico? Estava com um vírus!','O que uma parede disse à outra? Nos encontramos na esquina!'];
     const facts=['O polvo tem três corações.','A luz do Sol leva cerca de oito minutos para chegar à Terra.','O som não se propaga no vácuo.','As abelhas podem comunicar direções por meio de danças.','O maior planeta do Sistema Solar é Júpiter.'];
     return ({name,arg,jid,actor})=>{
