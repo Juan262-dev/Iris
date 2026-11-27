@@ -5,6 +5,7 @@ import { mkdtemp,writeFile,readFile,rm,stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { directFunImage } from './funMedia.js';
+import { unoRoute } from './unoVisual.js';
 const exec=promisify(execFile),MB=1024*1024;
 export const media5=['animtexto','fundopro','formatoimagem','videofiltro','audioefeito'];
 export const collage5='colagem';
@@ -38,7 +39,9 @@ export async function convertImage(input,arg){
 const filters={cinza:'hue=s=0',sepia:'colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131',invertido:'negate'};
 const audioFilters={eco:'aecho=0.8:0.7:80:0.25',suave:'lowpass=f=3000',normalizar:'loudnorm=I=-18:TP=-2:LRA=11'};
 async function directMedia(msg,b,type,limit){
- const m=msg?.message?.[type+'Message'];if(!m||m.viewOnce||m.contextInfo?.expiration||Number(m.fileLength||0)>limit)throw Error('media');
+ let m=msg?.message?.[type+'Message'];
+ if(!m&&type==='audio'){const ctx=msg?.message?.extendedTextMessage?.contextInfo,who=unoRoute(msg?.key?.participant),quoted=unoRoute(ctx?.participant);if(who&&quoted===who&&ctx?.stanzaId&&!ctx.expiration&&(!ctx.remoteJid||ctx.remoteJid===msg.key.remoteJid))m=ctx.quotedMessage?.audioMessage;}
+ if(!m||m.viewOnce||m.contextInfo?.expiration||Number(m.fileLength||0)>limit)throw Error('media');
  if(m.url){const u=new URL(m.url);if(u.protocol!=='https:'||u.username||u.password||u.port||!(u.hostname==='whatsapp.net'||u.hostname.endsWith('.whatsapp.net')))throw Error('url');}
  const stream=await b.downloadContentFromMessage(m,type),parts=[];let n=0;for await(const chunk of stream){n+=chunk.length;if(n>limit){stream.destroy?.();throw Error('size');}parts.push(chunk);}
  return {data:Buffer.concat(parts),mimetype:m.mimetype};
@@ -57,7 +60,7 @@ export async function mediaFeature5(msg,b,name,arg){
  if(name==='videofiltro'){const m=await directMedia(msg,b,'video',10*MB);if(m.mimetype!=='video/mp4')throw Error('format');return videoEffect(m.data,arg);}
  if(name==='audioefeito'){const m=await directMedia(msg,b,'audio',5*MB);return audioEffect(m.data,m.mimetype,arg);}
  const data=await directFunImage(msg,b);return name==='animtexto'?await animatedTextSticker(data,arg):name==='fundopro'?await backgroundPro(data,arg):await convertImage(data,arg);
- }catch{return 'Envie mídia própria autorizada com o comando na legenda ou como envio direto. Imagens até 5 MB; vídeo MP4 até 10 MB (:videofiltro cinza|sepia|invertido); áudio OGG, WAV ou MP3 até 5 MB (:audioefeito eco|suave|normalizar).';}
+ }catch{return 'Envie mídia própria autorizada com o comando na legenda ou como envio direto. Imagens até 5 MB; vídeo MP4 até 10 MB (:videofiltro cinza|sepia|invertido); responda ao seu próprio áudio OGG, WAV ou MP3 até 5 MB com :audioefeito eco|suave|normalizar.';}
 }
 export async function collageFeature5({state,id,arg='',loadImage,now=Date.now()}){
  const p=state.players[id],out=(text,changed=false)=>({text,changed});if(!p)return out('Use :perfil.');
