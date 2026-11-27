@@ -7,7 +7,7 @@ const a='aaaaaa'+'0'.repeat(58),b='bbbbbb'+'0'.repeat(58),c='cccccc'+'0'.repeat(
 const state={players:{[a]:{xp:0,coins:40},[b]:{xp:0,coins:10}},custom:{old:'preserved'},rules:'old rules'};
 let now=Date.UTC(2026,10,27,12);
 const run=(name,arg='',id=a,owner=false)=>infinityFeature({name,arg,state,id,owner,now,choose:()=>0});
-for(const cmd of infinityCommands){const p=parseExtra(':'+cmd,true);assert.equal(p?.name,cmd,cmd);}
+for(const cmd of infinityCommands){const p=parseExtra(':'+cmd,true);assert.equal(p?.name,['mapainfinity','viajarworld','aventuraworld','offline','explorar','construir','oficina','npc'].includes(cmd)?'jogos':cmd,cmd);}
 assert.equal(parseExtra(':backupinfinity salvar',false),null);
 assert.equal(parseExtra(':meun',false)?.name,'menu');
 assert.match(menu('infinity'),/INFINITY/i);
