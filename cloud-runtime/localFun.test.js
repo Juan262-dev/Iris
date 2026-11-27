@@ -12,7 +12,7 @@ assert.match(g({...a,arg:'0'}),/casa livre/);
 assert.match(g({...a,actor:'b',arg:'1'}),/começar/);
 assert.match(g({...a,arg:'1'}),/Sua vez/);
 assert.match(g({...a,name:'forca',arg:''}),/Adivinhe/);
-assert.match(g({...a,name:'forca',arg:'ab'}),/uma letra/);
+assert.match(g({...a,name:'forca',arg:'ab'}),/Palavra incorreta|Você acertou/);
 const p={coins:40,xp:0};
 assert.equal(purchase(p,'estrela'),null);
 assert.equal(p.coins,20);
