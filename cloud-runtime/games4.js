@@ -47,10 +47,11 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(arg==='sair'){delete all[id];return out('2048 encerrado.',true);}
         if(arg==='novo'){if(g)return out('Já existe uma partida. :2048 sair.');if(Object.keys(all).length>=50)return out('Limite de partidas.');g=all[id]={b:Array(16).fill(0),score:0,expires:now+day};spawn(g.b,choose);spawn(g.b,choose);return out(await board2048(g),true);}
         if(!g)return out('Use :2048 novo.');
+        if(arg==='recorde')return out('Seu recorde: '+(state.players[id]?.best2048||0)+' pts. Partida: '+g.score+' pts.');
         if(!arg||arg==='mesa')return out(await board2048(g));
         if(!['cima','baixo','esquerda','direita'].includes(arg))return out('Use :2048 cima, baixo, esquerda ou direita.');
         const m=slide2048(g.b,arg);if(!m.changed)return out('Movimento sem mudança.');
-        g.b=m.board;g.score+=m.score;spawn(g.b,choose);g.expires=now+day;
+        g.b=m.board;g.score+=m.score;if(state.players[id])state.players[id].best2048=Math.max(state.players[id].best2048||0,g.score);spawn(g.b,choose);g.expires=now+day;
         const result=await board2048(g);
         if(g.b.includes(2048)||!['cima','baixo','esquerda','direita'].some(d=>slide2048(g.b,d).changed)){if(g.b.includes(2048)){award(state,id,name,3);result.caption='Você chegou a 2048!';}else result.caption='Fim da partida. Pontos: '+g.score;delete all[id];}
         return out(result,true);
@@ -104,6 +105,7 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
     if(name==='cruzadas'){
         const p=puzzles[0];if(arg==='novo'){if(g)return out('Já existe uma cruzada.');g=db[name]={ids:[id],solved:[],expires:now+day};}
         if(!g)return out('Use :cruzadas novo.');
+        if(!g.ids.includes(id))return out('Já existe uma cruzada de outro jogador.');
         const m=/^resposta ([123]) ([a-z]+)$/.exec(arg);if(m){const i=Number(m[1])-1;if(g.solved.includes(i))return out('Pista já resolvida.');if(p.words[i]!==m[2])return out('Tente outra palavra.');g.solved.push(i);award(state,id,name);if(g.solved.length===p.words.length){delete db[name];return out('Palavras cruzadas concluídas!',true);}}
         const lines=p.rows.map((r,y)=>Array.from(r).map((c,x)=>c==='#'?'■':(g.solved.includes(0)&&y===0||g.solved.includes(1)&&x===0||g.solved.includes(2)&&x===2)?c:'□').join('   '));
         return out({image:await picture('PALAVRAS CRUZADAS',lines.concat(p.clues)),caption:':cruzadas resposta 1 sol (responda pelo número da pista).'},arg==='novo'||!!m);
@@ -112,6 +114,7 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         const clues=[['Onde livros costumam morar?','biblioteca'],['O que ilumina o dia?','sol'],['O que marca as horas?','relogio']];
         if(arg==='novo'){if(g)return out('Já existe uma caça.');g=db[name]={ids:[id],index:0,expires:now+day};return out('Caça ao tesouro virtual: '+clues[0][0]+' :tesouro resposta palavra.',true);}
         if(!g)return out('Use :tesouro novo.');
+        if(!g.ids.includes(id))return out('Já existe uma caça de outro jogador.');
         if(arg.startsWith('resposta ')&&arg.slice(9)===clues[g.index][1]){award(state,id,name);g.index++;if(g.index===clues.length){delete db[name];return out('Tesouro simbólico descoberto!',true);}return out('Próxima pista: '+clues[g.index][0],true);}
         return out(clues[g.index][0]+' — :tesouro resposta palavra.');
     }
@@ -127,6 +130,6 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
     const m=/^resposta ([123])$/.exec(arg);
     if(m){if(!g.ids.includes(id)||Object.hasOwn(g.answered,id))return out('Inscrição necessária; uma resposta por rodada.');const correct=Number(m[1])-1===questions[g.round][2];g.answered[id]=true;if(correct){g.scores[id]++;g.marks[id].push(g.round);award(state,id,name);if(isBingo&&g.marks[id].length===3){const result='Bingo educativo concluído por '+label(id)+'!\n'+score();delete db[name];return out(result,true);}}if(g.ids.every(k=>g.answered[k])){g.round++;g.answered={};if(g.round===questions.length){const result='Placar final:\n'+score();delete db[name];return out(result,true);}return out('Rodada concluída.\n'+card(questions[g.round]),true);}return out('Resposta registrada. O resultado aparece no placar ao fim da rodada.',true);}
     if(arg==='proxima'&&g.ids[0]===id){g.round++;g.answered={};if(g.round===questions.length){const result=score();delete db[name];return out('Placar final:\n'+result,true);}return out(card(questions[g.round]),true);}
-    return out(card(questions[g.round])+'\n:'+name+' resposta 1 | placar');
+    return out('Rodada '+(g.round+1)+'/'+questions.length+' • '+Object.keys(g.answered).length+'/'+g.ids.length+' respostas\n'+card(questions[g.round])+'\n:'+name+' resposta 1 | placar');
 }
 export function removeGames4(state,id){const db=state.games4;if(!db)return;for(const key of ['2048','unobot'])if(db[key])delete db[key][id];for(const key of games4.filter(k=>!['2048','unobot'].includes(k)))if(db[key]?.ids?.includes(id))delete db[key];}
