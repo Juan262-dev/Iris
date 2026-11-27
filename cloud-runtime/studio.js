@@ -89,7 +89,7 @@ export async function studioCommand(msg,b,name,arg){
     const m=selectMedia(msg)?.message;
     try{
         if(name==='autor'){
-            if(!m?.stickerMessage)return 'Responda a uma figurinha autorizada com !iris autor nome (até 40 caracteres).';
+            if(!m?.stickerMessage)return 'Responda a uma figurinha autorizada com :autor nome (até 40 caracteres).';
             return await stickerAuthor(await download(m.stickerMessage,'sticker',b,450000),arg);
         }
         if(['filtro','semfundo','transparente'].includes(name)){
@@ -99,7 +99,7 @@ export async function studioCommand(msg,b,name,arg){
             return await removeBackground(d,arg,name==='transparente');
         }
         if(!m?.videoMessage||m.videoMessage.mimetype!=='video/mp4')return 'Responda a um MP4 autorizado de até 15 MB.';
-        if(name==='trecho'&&!/^\d{1,3}$/.test(arg))return 'Use !iris trecho 30 para converter até 20 segundos a partir do segundo 30 (sem áudio).';
+        if(name==='trecho'&&!/^\d{1,3}$/.test(arg))return 'Use :trecho 30 para converter até 20 segundos a partir do segundo 30 (sem áudio).';
         return await videoStudio(await download(m.videoMessage,'video',b,15*MB),name,name==='trecho'?Number(arg):0);
     }catch{return '🌸 Não consegui processar. Confira os limites e o formato. Filtros: cinza, sepia, nitido, invertido. Fundo: cor uniforme, opcional #ffffff.';}
 }
