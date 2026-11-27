@@ -146,7 +146,7 @@ async function quizVisual(title,caption){
  const lines=cleanCaption(caption).split('\n').filter(Boolean),options=lines.filter(l=>/^[123]\.\s+/.test(l));
  if(options.length<2)return gameNotice(title,caption);
  let b=header(title,'Escolha uma alternativa','#82c8e4'),y=184;
- const question=lines.filter(l=>!options.includes(l)&&!/^(?:Envie|Use|:|Quiz Íris)/i.test(l)).slice(0,4);
+ const question=lines.filter(l=>!options.includes(l)&&!/^(?:Envie|Use|:|Quiz Íris)/i.test(l)).slice(0,5);
  const q=bodyLines(question,y);b+=q.b;y=q.y+12;
  options.forEach(l=>{const n=l[0],rows=wrap(l.slice(2).trim(),40),h=42+rows.length*28;b+=rect(30,y,660,h,'#3b3358',12)+circle(70,y+h/2,23,'#61528b')+txt(70,y+h/2+8,n,23,'#fff','middle',700);rows.forEach((r,i)=>b+=txt(110,y+31+i*28,r,22));y+=h+13;});
  b+=footer(y+4,'Responda com 1, 2 ou 3');return png(y+80,b,caption);
@@ -154,7 +154,7 @@ async function quizVisual(title,caption){
 async function velhaVisual(title,caption){
  const rows=caption.split('\n').filter(l=>l.includes('│')).map(l=>l.split('│').map(v=>v.trim()));
  if(rows.length!==3||rows.some(r=>r.length!==3))return gameNotice(title,caption);
- let b=header(title,'Escolha uma casa livre','#b9a2ef');
+ const result=caption.split('\n').filter(l=>!l.includes('│')).find(l=>/venceu|empate|sua vez|vez de/i.test(l));let b=header(title,result?cleanCaption(result).slice(0,55):'Escolha uma casa livre','#b9a2ef');
  rows.flat().forEach((v,i)=>{const x=105+i%3*170,y=178+Math.floor(i/3)*170;b+=rect(x,y,160,160,'#3f345c',14);
  if(v==='❌'||v==='X'){b+='<path d="M'+(x+45)+' '+(y+45)+'l70 70m0 -70l-70 70" fill="none" stroke="#e58b91" stroke-width="14" stroke-linecap="round"/>';}
  else if(v==='⭕'||v==='O')b+=circle(x+80,y+80,42,'none','#84cce8',14);
@@ -195,7 +195,7 @@ async function trackVisual(title,caption){
 }
 // Operates exclusively on text already approved for the current group; never reads secret game state.
 export async function visualGameResponse(name,title,response){
- if(typeof response!=='string'||!response.trim()||response.length>4000)return response;
+ if(typeof response!=='string'||!response.trim()||response.length>1000)return response;
  if(/^(?:📩|Não consegui|STOP privado|Jogos limitados|Comando restrito|Recurso limitado|🌸 Não foi possível)/.test(response))return response;
  const cap=response,titleUpper=title.toUpperCase();
  if(['quiz','quizmulti','batalhaconhecimento','bingoeducativo','detetive'].includes(name))return quizVisual(titleUpper,cap);
