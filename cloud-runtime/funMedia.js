@@ -10,10 +10,10 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const svg=(w,h,body)=>Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><g font-family="sans-serif">'+body+'</g></svg>');
 const rect=(x,y,w,h,fill,rx=12)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'"/>';
 const txt=(x,y,t,size=24,fill='#fff',center=false,weight='normal')=>'<text x="'+x+'" y="'+y+'" fill="'+fill+'" font-size="'+size+'" font-weight="'+weight+'"'+(center?' text-anchor="middle"':'')+'>'+esc(t)+'</text>';
-export const funMenuText='ÍRIS FUN\nInterações: :fun on | off | lista, :abraco, :tocarasmaos, :amizade, :elogio, :dupla, :quem.\nBrincadeiras: :verdade, :desafio, :eununca, :adivinha, :chance, :8ball, :escolher, :sorte, :frase.\nImagens: :petpet, :pixelar, :cartoon, :cartaz, :certificado, :trofeu, :memealeatorio.\nInterações com voluntários: :fun on. Use menção real ou código do perfil. Para efeitos em fotos, envie sua própria imagem com o comando na legenda.';
+export const funMenuText='ÍRIS FUN\nInterações: :fun on | off | lista, :abraco, :tocarasmaos, :amizade, :elogio, :dupla, :quem, :acenar, :celebrar.\nBrincadeiras: :verdade, :desafio, :eununca, :adivinha, :chance, :8ball, :escolher, :sorte, :frase.\nImagens: :petpet, :pixelar, :cartoon, :cartaz, :certificado, :trofeu, :memealeatorio.\nInterações com voluntários: :fun on. Use menção real ou código do perfil. Para efeitos em fotos, envie sua própria imagem com o comando na legenda.';
 export async function funMenu(){
     const blocks=[
-        ['01','INTERAÇÕES',[':abraco  :tocarasmaos  :amizade',':elogio  :dupla  :quem']],
+        ['01','INTERAÇÕES',[':abraco  :tocarasmaos  :amizade',':elogio  :dupla  :quem  :acenar  :celebrar']],
         ['02','PERGUNTAS E DESAFIOS',[':verdade  :desafio  :eununca',':adivinha  :frase  :sorte']],
         ['03','ESCOLHAS ALEATÓRIAS',[':chance  :8ball  :escolher']],
         ['04','ESTÚDIO DE BRINCADEIRAS',[':petpet  :pixelar  :cartoon',':cartaz  :certificado  :trofeu',':memealeatorio']]
@@ -29,7 +29,7 @@ export async function funMenu(){
     body.push(txt(340,720,'Prefixo : • :fun on para participar • :fun off para sair',16,'#d7c3f4',true));
     return {image:await sharp(svg(680,740,body.join(''))).png().toBuffer(),caption:funMenuText};
 }
-const palettes={abraco:['#3d245b','#eec2f1'],tocarasmaos:['#17334b','#a0e8f6'],elogio:['#2c4650','#ffdf92']};
+const palettes={abraco:['#3d245b','#eec2f1'],tocarasmaos:['#17334b','#a0e8f6'],elogio:['#2c4650','#ffdf92'],acenar:['#304560','#cce6ff'],celebrar:['#4d2e64','#ffd88d']};
 export async function encodeGif(frames,rate=6){
     if(!Array.isArray(frames)||frames.length<2||frames.length>12||![4,6,8].includes(rate))throw Error('frames');
     const dir=await mkdtemp(join(tmpdir(),'iris-fun-'));
@@ -46,17 +46,18 @@ const gifDocument=(gif,caption,fileName)=>({document:gif,mimetype:'image/gif',fi
 export async function friendlyGif(kind,caption){
     if(!Object.hasOwn(palettes,kind))throw Error('kind');
     const [bg,accent]=palettes[kind],frames=[];
-    const title=kind==='abraco'?'ABRAÇO VIRTUAL':kind==='tocarasmaos'?'TOCA AQUI!':'PARABÉNS!';
+    const title=kind==='acenar'?'OLÁ, AMIGO!':kind==='celebrar'?'VAMOS CELEBRAR!':kind==='abraco'?'ABRAÇO VIRTUAL':kind==='tocarasmaos'?'TOCA AQUI!':'PARABÉNS!';
     for(let i=0;i<8;i++){
         const d=Math.round(28*Math.sin(i*Math.PI/7)),x1=100+d,x2=220-d;
         const b=[rect(0,0,320,240,bg,0),txt(160,36,title,24,accent,true,'bold')];
-        if(kind==='elogio'){
+        if(kind==='elogio'||kind==='celebrar'){
             for(let k=0;k<5;k++){const x=55+k*53,y=94+(k%2)*36+d/3;b.push('<path d="M '+x+' '+(y-15)+' l 5 10 11 2 -8 8 2 11 -10 -5 -10 5 2 -11 -8 -8 11 -2 Z" fill="'+accent+'"/>');}
         }else{
             for(const [x,color] of [[x1,'#c6b0ff'],[x2,'#ffdaac']]){
                 b.push('<circle cx="'+x+'" cy="105" r="26" fill="'+color+'"/>','<circle cx="'+(x-8)+'" cy="102" r="2.8" fill="#302546"/>','<circle cx="'+(x+8)+'" cy="102" r="2.8" fill="#302546"/>','<path d="M '+(x-8)+' 113 Q '+x+' 121 '+(x+8)+' 113" fill="none" stroke="#302546" stroke-width="2.5" stroke-linecap="round"/>',rect(x-26,134,52,54,color,24));
             }
-            if(kind==='abraco')b.push('<path d="M '+(x1+15)+' 151 Q 160 178 '+(x2-15)+' 151" fill="none" stroke="'+accent+'" stroke-width="14" stroke-linecap="round"/>');
+            if(kind==='acenar')b.push('<path d="M '+(x1-12)+' 150 L '+(x1-40)+' '+(120-d)+' M '+(x2+12)+' 150 L '+(x2+40)+' '+(120-d)+'" fill="none" stroke="'+accent+'" stroke-width="12" stroke-linecap="round"/>');
+            else if(kind==='abraco')b.push('<path d="M '+(x1+15)+' 151 Q 160 178 '+(x2-15)+' 151" fill="none" stroke="'+accent+'" stroke-width="14" stroke-linecap="round"/>');
             else b.push('<path d="M '+(x1+10)+' 153 L '+(145+d/2)+' '+(125-d/2)+' M '+(x2-10)+' 153 L '+(175-d/2)+' '+(125-d/2)+'" fill="none" stroke="'+accent+'" stroke-width="11" stroke-linecap="round"/>');
         }
         b.push(txt(160,218,'ÍRIS FUN • AMIZADE',14,accent,true));
