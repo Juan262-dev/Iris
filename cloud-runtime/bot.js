@@ -117,7 +117,7 @@ export async function startHeadlessBot(restartCount = 0) {
         if(closed||!response||!chats.has(jid))return;
         if(response.soundSticker){
             try{await sendSoundSticker(sock,baileys,jid,response.soundSticker,msg);}
-            catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use !iris s.'},{quoted:msg});}
+            catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use :s.'},{quoted:msg});}
         }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
     }
     const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg)});
@@ -135,10 +135,7 @@ export async function startHeadlessBot(restartCount = 0) {
                 const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || msg.message?.videoMessage?.caption || '';
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
                 const owner = msg.key?.fromMe === true;
-                let extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
-                if(!extra&&!action&&chats.has(jid)&&jid.endsWith('@g.us')&&/^[./#][a-z]+(?:\s|$)/i.test(text)){
-                    try{extra=await features.alternate({jid,text,owner});}catch{console.error('Iris: alternate prefix lookup failed');}
-                }
+                const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
                 const plain = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
                 const shortMove = !action && !extra && chats.has(jid) && jid.endsWith('@g.us') && isChessMove(plain);
                 const activity=!action&&!extra&&!shortMove&&chats.has(jid)&&jid.endsWith('@g.us')?(shortActivity(plain)||megaShort(plain)):null;
@@ -150,7 +147,7 @@ export async function startHeadlessBot(restartCount = 0) {
                 let response;
                 if (action === 'on') {
                     await chats.set(jid, true);
-                    response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos !iris e a respostas curtas de atividades ativas. Use somente com a autorização dos participantes. O responsável pode desativar com !iris off.';
+                    response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos iniciados por : e a respostas curtas de atividades ativas. Use somente com a autorização dos participantes. O responsável pode desativar com :off.';
                 } else if (action === 'off') {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
