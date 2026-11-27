@@ -206,3 +206,14 @@ export async function visualGameResponse(name,title,response){
  if(['imobiliario','trilha','expedicao','reliquia'].includes(name))return trackVisual(titleUpper,cap);
  return gameNotice(titleUpper,cap);
 }
+
+export async function gameCatalogVisual(page){
+ const labels={todos:'Todos os jogos',solo:'Individuais',grupo:'Multiplayer',tabuleiro:'Tabuleiro e cartas',logica:'Lógica e palavras',estudos:'Estudos e desafios',equipe:'Equipes e campeonatos',rapidos:'Jogos rápidos'};
+ let b=header('CENTRAL DE JOGOS',labels[page.mode]+' • '+page.total+' jogos • '+page.page+'/'+page.pages,'#b9a2ef'),y=170;
+ page.rows.forEach((r,i)=>{const tint=r.mode==='solo'?'#83cdb2':r.mode==='grupo'?'#9fc9f0':'#f0c27a';
+ b+=rect(30,y,660,84,'#393052',12)+rect(42,y+12,6,60,tint,3)+txt(64,y+30,r.title,24,'#fff','start',700)+txt(64,y+60,r.command,21,'#d2c5eb')+txt(674,y+30,r.mode==='solo'?'SOLO':r.mode==='grupo'?'GRUPO':'AMBOS',14,tint,'end',700);
+ y+=94;});
+ b+=rect(30,y+4,660,106,'#302744',12)+txt(48,y+34,'CATEGORIAS',17,'#c9b7e9','start',700)+txt(48,y+64,'tabuleiro • lógica • estudos • equipe',21)+txt(48,y+91,'rápidos • solo • grupo',21);
+ const base=':jogos '+(page.mode==='todos'?'lista':page.mode),nav=[page.page>1?base+' '+(page.page-1):'',page.page<page.pages?base+' '+(page.page+1):''].filter(Boolean).join('   |   ');
+ b+=footer(y+124,nav||':jogos lista  •  :jogos meus');return png(y+200,b,page.caption);
+}
