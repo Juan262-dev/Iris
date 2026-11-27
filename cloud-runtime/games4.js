@@ -1,3 +1,4 @@
+import {dominoHand,dominoTable} from './gameVisual.js';
 import { recordMatch5 } from './games5.js';
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
@@ -96,14 +97,14 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         const player=k=>'Jogador '+(g.ids.indexOf(k)+1);
         const ends=()=>[g.chain[0][0],g.chain.at(-1)[1]];
         const table=()=> '🁫 *Mesa do dominó*\n'+g.chain.map(t=>'['+t.join('│')+']').join(' ')+'\nPontas: E '+ends()[0]+' • D '+ends()[1]+'\n'+g.ids.map(k=>player(k)+': '+g.hands[k].length+' peças').join(' | ')+'\nVez: '+player(g.ids[g.turn])+' • Monte: '+g.deck.length+'\n:domino m | c | p | mao';
-        const pack=async (ids,caption)=>({unoDelivery:{public:caption,game:'domino',private:ids.filter(k=>validUnoRoute(g.routes[k])).map(k=>{
-            const [l,r]=ends();return {to:g.routes[k],content:{text:'🁫 *Suas peças*\n'+g.hands[k].map(t=>{const sides=[t.includes(l)?'E':'',t.includes(r)?'D':''].filter(Boolean).join('/');return slots(k)[tileKey(t)]+'. ['+t.join('│')+']'+(sides?' • '+sides:'');}).join('\n')+'\n\n'+(g.ids[g.turn]===k?'É sua vez!':'Aguarde sua vez.')+'\nNo grupo: :domino 2 (automático), :domino 2 e ou :domino 2 d.\n:domino c (comprar) | :domino p (passar). Os números das peças não mudam.'}};
-        })}});
+        const pack=async (ids,caption)=>({unoDelivery:{public:await dominoTable(g,caption),game:'domino',private:await Promise.all(ids.filter(k=>validUnoRoute(g.routes[k])).map(async k=>{
+            const [l,r]=ends();return {to:g.routes[k],content:await dominoHand(g,k,slots(k),'🁫 *Suas peças*\n'+g.hands[k].map(t=>{const sides=[t.includes(l)?'E':'',t.includes(r)?'D':''].filter(Boolean).join('/');return slots(k)[tileKey(t)]+'. ['+t.join('│')+']'+(sides?' • '+sides:'');}).join('\n')+'\n\n'+(g.ids[g.turn]===k?'É sua vez!':'Aguarde sua vez.')+'\nNo grupo: :domino 2 (automático), :domino 2 e ou :domino 2 d.\n:domino c (comprar) | :domino p (passar). Os números das peças não mudam.')};
+        }))}});
         if(arg==='pv'){if(!validUnoRoute(route)||Object.entries(g.routes).some(([k,v])=>k!==id&&v===route))return out('Contato inválido.');g.routes[id]=route;return out(g.hands?await pack([id],'Mão privada reenviada.'):'PV confirmado ('+g.ids.filter(k=>validUnoRoute(g.routes[k])).length+'/'+g.ids.length+').',true);}
         if(arg==='iniciar'){if(g.ids[0]!==id||g.ids.length<2||g.ids.length>4||g.hands||!g.ids.every(k=>validUnoRoute(g.routes[k])))return out('Criador inicia após 2 a 4 jogadores confirmarem PV.');g.deck=shuffle(tiles(),choose);g.hands=Object.fromEntries(g.ids.map(k=>[k,g.deck.splice(0,g.ids.length===4?6:7)]));g.chain=[g.deck.pop()];g.turn=0;g.passes=0;g.expires=now+day;ensureSlots();return out(await pack(g.ids,'Dominó iniciado!\n'+table()),true);}
         if(!g.hands)return out('Aguardando início.');
         if(arg==='mao'||arg==='opcoes')return out(await pack([id],'Mão privada enviada.'));
-        if(!arg||arg==='mesa')return out(table());
+        if(!arg||arg==='mesa')return out(await dominoTable(g,table()));
         if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
         const hand=g.hands[id],[left,right]=ends(),legal=t=>t.includes(left)||t.includes(right);
         if(arg==='comprar'||arg==='passar'){
