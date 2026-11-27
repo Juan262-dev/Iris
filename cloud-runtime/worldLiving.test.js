@@ -10,7 +10,7 @@ import {makeWorldHttp} from './world-web.js';
 const a='a'.repeat(64),b='b'.repeat(64),hour=3600000,start=Date.UTC(2026,10,27,9);
 const state={players:{[a]:{xp:0,coins:200},[b]:{xp:8,coins:30}},custom:{legacy:'intact'}};
 const run=(arg,now=start,id=a)=>livingFeature({state,id,arg,now}),p=state.players[a];
-assert.equal(parseExtra(':offline minerar',false).name,'offline');
+assert.equal(parseExtra(':offline minerar',false).name,'jogos');
 assert.equal(validWorldAction('offline','rotina'),true);
 assert.equal(validLivingArg('melhorar __proto__'),false);
 assert.equal(run('minerar').changed,true);
