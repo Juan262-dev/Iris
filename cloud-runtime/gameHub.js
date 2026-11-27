@@ -1,7 +1,7 @@
 import {gameStats} from './profileCard.js';
 export const retiredGames=new Set(['rpg','world','mapainfinity','mapainfinty','viajarworld','aventuraworld','offline','explorar','construir','oficina','npc','aventura']);
 const catalog={
- stop:['Adedonha','grupo','novo classico 3 180','entrar → iniciar → pv → responda ao formulário; placar, revisar, proxima'],
+ stop:['Adedonha','grupo','novo classico 3 180','entrar → iniciar → pv → responda à foto do formulário; placar, revisar, proxima'],
  uno:['UNO','grupo','novo','entrar → pv → iniciar; mao, comprar, gritar'],
  unobot:['UNO solo','solo','novo','mao, pos 1, comprar, sair'],
  domino:['Dominó','grupo','novo','entrar → pv → iniciar; 2 (peça), 2 e/d (lado), c (comprar), p (passar), m (mesa), mao'],
@@ -10,8 +10,8 @@ const catalog={
  naval:['Batalha naval','grupo','desafio','aceitar; tabuleiro, tiro a1'],
  velha:['Jogo da velha','solo','novo','1 a 9; mesa, sair'],
  velhadupla:['Velha em dupla','grupo','desafio','aceitar; casas 1 a 9'],
- ludo:['Ludo','grupo','novo','entrar → iniciar; dado, mover 1, mesa'],
- memoria:['Memória','grupo','novo','entrar; 2 7, mesa'],
+ ludo:['Ludo','grupo','novo','entrar → iniciar; d (dado), 1 ou 2 (peça), m (mesa)'],
+ memoria:['Memória','grupo','novo','entrar; 2 7, m (mesa)'],
  sudoku:['Sudoku','solo','novo facil','jogar 1 2 5; limpar 1 2, mesa'],
  termo:['Termo','solo','novo','tentar amigo; mesa, sair'],
  '2048':['2048','solo','novo','cima, baixo, esquerda, direita, mesa'],
