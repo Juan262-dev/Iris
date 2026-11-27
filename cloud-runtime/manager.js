@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { timingSafeEqual } from 'node:crypto';
+import { managerV2 } from './managerV2.js';
 const root=new URL('./manager-web/',import.meta.url);
 const staticFiles={'/manager':['index.html','text/html; charset=utf-8'],'/manager/style.css':['style.css','text/css; charset=utf-8'],'/manager/app.js':['app.js','text/javascript; charset=utf-8']};
 const cookieName='__Host-iris_session';
@@ -12,7 +12,8 @@ function tokenOf(req){const value=String(req.headers.cookie||'').split(';').map(
 function sessionCookie(res,token,expiry=0){const age=Math.min(3600,Math.max(0,Math.floor(Number(expiry)||0)));res.setHeader('Set-Cookie',cookieName+'='+(token||'')+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+age);}
 async function body(req){if(!String(req.headers['content-type']||'').startsWith('application/json'))throw Error('content type');const parts=[];let n=0;for await(const chunk of req){n+=chunk.length;if(n>4096)throw Error('body size');parts.push(chunk);}const v=JSON.parse(Buffer.concat(parts).toString('utf8'));if(!v||typeof v!=='object'||Array.isArray(v))throw Error('body');return v;}
 async function remote(path,{method='GET',token,data,query}={}){const {url,key}=authConfig();const u=new URL(path,url);if(query)for(const [k,v] of Object.entries(query))u.searchParams.set(k,v);const h={apikey:key,Accept:'application/json','Content-Type':'application/json'};if(token)h.Authorization='Bearer '+token;if(method==='POST'&&path.startsWith('/rest/'))h.Prefer='return=representation';if(method==='PATCH'||method==='DELETE')h.Prefer='return=minimal';const response=await fetch(u,{method,headers:h,body:data===undefined?undefined:JSON.stringify(data),redirect:'error',signal:AbortSignal.timeout(10000)});let v=null;try{v=await response.json();}catch{}return {ok:response.ok,status:response.status,value:v};}
-async function identify(req){const token=tokenOf(req);if(!token)return null;const a=await remote('/auth/v1/user',{token});const u=a.value;if(!a.ok||!u?.email_confirmed_at||!uuid.test(u.id||''))return null;return {id:u.id,token};}
+function assurance(token){try{return JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8')).aal==='aal2'?'aal2':'aal1';}catch{return 'aal1';}}
+async function identify(req){const token=tokenOf(req);if(!token)return null;const a=await remote('/auth/v1/user',{token});const u=a.value;if(!a.ok||!u?.email_confirmed_at||!uuid.test(u.id||''))return null;return {id:u.id,token,factors:Array.isArray(u.factors)?u.factors.filter(f=>f.factor_type==='totp'&&uuid.test(f.id||'')).map(f=>({id:f.id,status:f.status})):[],verifiedFactors:Array.isArray(u.factors)?u.factors.filter(f=>f.status==='verified'):[],aal:token.split('.').length===3?assurance(token):'aal1'};}
 async function isAdmin(user){const a=await remote('/rest/v1/iris_manager_admins',{token:user.token,query:{select:'user_id',user_id:'eq.'+user.id,limit:'1'}});return a.ok&&Array.isArray(a.value)&&a.value.some(v=>v.user_id===user.id);}
 async function ownBot(user){const a=await remote('/rest/v1/iris_manager_bots',{token:user.token,query:{select:'display_name,provider,created_at',user_id:'eq.'+user.id,limit:'1'}});if(!a.ok||!Array.isArray(a.value))throw Error('bot lookup');return a.value[0]||null;}
 export function validOrigin(req,origin=safeOrigin()){return req.headers.origin===origin&&req.headers['x-iris-request']==='1';}
@@ -29,6 +30,22 @@ export function makeManager(supervisor,{now=Date.now}={}){
  const endpoint=path.slice('/manager/api/'.length),post=req.method==='POST';
  if(req.method!=='GET'&&!post){reply(res,405,{error:'Método inválido.'});return true;}
  if(post&&!validOrigin(req)){reply(res,403,{error:'Origem inválida.'});return true;}
+ if(endpoint==='recover'&&post){
+ const v=await body(req),email=typeof v.email==='string'?v.email.trim().toLowerCase():'';
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254){reply(res,400,{error:'Informe um e-mail válido.'});return true;}
+ if(!gate('recover-all',15,60000)||!gate('recover-email:'+email,2,300000)){reply(res,429,{error:'Aguarde antes de solicitar novamente.'});return true;}
+ await remote('/auth/v1/recover',{method:'POST',data:{email},query:{redirect_to:safeOrigin()+'/manager'}});
+ reply(res,200,{message:'Se a conta estiver cadastrada e o envio estiver disponível, confira o e-mail de recuperação.'});return true;
+ }
+ if(endpoint==='reset-password'&&post){
+ const v=await body(req),token=v.token,password=v.password;
+ if(typeof token!=='string'||token.length>6000||!/^eyJ[A-Za-z0-9._-]+$/.test(token)||typeof password!=='string'||password.length<10||password.length>128||!gate('reset-all',15,60000)){reply(res,400,{error:'Link ou senha inválidos.'});return true;}
+ const a=await remote('/auth/v1/user',{token});if(!a.ok||!uuid.test(a.value?.id||'')||!a.value.email_confirmed_at){reply(res,401,{error:'Link expirado. Solicite outro.'});return true;}
+ if(a.value.factors?.some(f=>f.status==='verified')&&assurance(token)!=='aal2'){reply(res,403,{error:'Conta com 2FA: entre e verifique seu autenticador antes de alterar a senha.'});return true;}
+ const update=await remote('/auth/v1/user',{method:'PUT',token,data:{password}});if(!update.ok){reply(res,400,{error:'Não foi possível alterar a senha. Solicite um novo link.'});return true;}
+ sessionCookie(res,null);try{await remote('/auth/v1/logout',{method:'POST',token,query:{scope:'global'}});}catch{}
+ reply(res,200,{message:'Senha alterada. Entre novamente.'});return true;
+ }
  if(['signup','login'].includes(endpoint)&&post){
  if(!gate('auth-all',40,60000)){reply(res,429,{error:'Muitas tentativas. Tente mais tarde.'});return true;}
  const v=await body(req),email=typeof v.email==='string'?v.email.trim().toLowerCase():'',password=typeof v.password==='string'?v.password:'';
@@ -43,6 +60,28 @@ export function makeManager(supervisor,{now=Date.now}={}){
  if(endpoint==='logout'&&post){const token=tokenOf(req);sessionCookie(res,null);if(token)try{await remote('/auth/v1/logout',{method:'POST',token,query:{scope:'local'}});}catch{}reply(res,200,{message:'Sessão encerrada.'});return true;}
  const user=await identify(req);if(!user){reply(res,401,{error:'Entre com uma conta de e-mail confirmada.'});return true;}
  if(!gate('user:'+user.id,45,60000)){reply(res,429,{error:'Limite temporário de solicitações.'});return true;}
+ if(endpoint==='security'&&!post){reply(res,200,{factors:user.factors,aal:user.aal,required:user.verifiedFactors.length>0&&user.aal!=='aal2'});return true;}
+ if(endpoint==='mfa-verify'&&post){
+ const v=await body(req);if(!user.factors.some(f=>f.id===v.factor)||typeof v.code!=='string'||!/^\d{6}$/.test(v.code)||!gate('mfa:'+user.id,5,60000)){reply(res,400,{error:'Fator ou código inválido. Aguarde se necessário.'});return true;}
+ const route='/auth/v1/factors/'+v.factor;
+ const challenge=await remote(route+'/challenge',{method:'POST',token:user.token,data:{}});
+ if(!challenge.ok||!uuid.test(challenge.value?.id||'')){reply(res,400,{error:'Não foi possível iniciar a verificação.'});return true;}
+ const verify=await remote(route+'/verify',{method:'POST',token:user.token,data:{challenge_id:challenge.value.id,code:v.code}});
+ const t=verify.value?.access_token;if(!verify.ok||typeof t!=='string'||t.length>6000||assurance(t)!=='aal2'){reply(res,400,{error:'Código incorreto ou expirado.'});return true;}
+ sessionCookie(res,t,verify.value.expires_in);reply(res,200,{message:'Segundo fator confirmado.'});return true;
+ }
+ if(user.verifiedFactors.length&&user.aal!=='aal2'){reply(res,403,{error:'Confirme seu autenticador para continuar.',mfa:true});return true;}
+ if(endpoint==='mfa-enroll'&&post){
+ if(user.verifiedFactors.length){reply(res,409,{error:'Já existe um segundo fator ativo.'});return true;}
+ const pending=user.factors.find(f=>f.status==='unverified');
+ if(pending){const removed=await remote('/auth/v1/factors/'+pending.id,{method:'DELETE',token:user.token});if(!removed.ok){reply(res,400,{error:'Não foi possível reiniciar a configuração.'});return true;}}
+ const a=await remote('/auth/v1/factors',{method:'POST',token:user.token,data:{factor_type:'totp',friendly_name:'Iris Manager',issuer:'Iris Cloud'}});
+ if(!a.ok||!uuid.test(a.value?.id||'')||!/^([A-Z2-7]+)=*$/i.test(a.value?.totp?.secret||'')){reply(res,400,{error:'2FA indisponível. Confira as configurações de Auth no Supabase.'});return true;}
+ reply(res,200,{factor:a.value.id,secret:a.value.totp.secret,message:'Adicione a chave no seu autenticador e confirme o código de seis dígitos.'});return true;
+ }
+ if(['instances','instance','administration'].includes(endpoint)){
+ const r=await managerV2({endpoint,post,user,admin:endpoint==='administration'&&await isAdmin(user),body:()=>body(req),supervisor});if(r){reply(res,r.code,r.value);return true;}
+ }
  if(endpoint==='me'&&req.method==='GET'){
  const [admin,bot]=await Promise.all([isAdmin(user),ownBot(user)]);reply(res,200,{id:user.id,admin,bot,official:{available:false,status:'Aguardando configuração e aprovação da Meta'},legacy:admin?supervisor.snapshot():null});return true;}
  if(endpoint==='bot'&&post){
