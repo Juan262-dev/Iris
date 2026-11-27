@@ -1,7 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 let me=null,data=null,security=null,selected=null,busy=false,page='overview',pendingFactor=null,recoveryToken=null;
-const titles={overview:'Visão geral',bots:'Meus bots',configuration:'Personalização',groups:'Grupos',commands:'Comandos',connect:'Conexão oficial',security:'Segurança',admin:'Administração'};
+const titles={overview:'Visão geral',bots:'Meus bots',configuration:'Personalização',groups:'Grupos',commands:'Comandos',connect:'Conexões',security:'Segurança',admin:'Administração'};
 const modules=['geral','estudos','jogos','midia','economia','diversao'];
 const show=t=>{$('notice').textContent=t||'';};
 function el(tag,txt,cls){const n=document.createElement(tag);if(txt!==undefined)n.textContent=txt;if(cls)n.className=cls;return n;}
