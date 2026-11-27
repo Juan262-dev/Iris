@@ -58,7 +58,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     let pending = false;
     let closed = false;
     const worldVerify=async({jid,route})=>{if(closed||lifecycle.stopping||!chats.has(jid)||!route)return false;try{const meta=await sock.groupMetadata(jid);return !closed&&chats.has(jid)&&(meta.participants||[]).some(p=>[p.id,p.lid,p.phoneNumber].map(unoRoute).includes(route));}catch{return false;}};
-    const world=makeWorldSessions({verify:worldVerify,operate:(identity,command)=>features.world(identity,command)});
+    const world=makeWorldSessions({verify:worldVerify,operate:(identity,command)=>!closed&&!lifecycle.stopping&&chats.has(identity.jid)?features.world(identity,command):null});
     lifecycle.world=input=>closed||lifecycle.stopping?{status:503}:world.rpc(input);
     const seen = new Set();
     const allowCommand = makeLimiter();
@@ -145,6 +145,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     sock.ev.on('group-participants.update', event => {
         if(closed||!event?.id?.endsWith('@g.us')||!chats.has(event.id)||!['add','remove'].includes(event.action))return;
         const jid=event.id, action=event.action, count=event.participants?.length||0;
+        if(action==='remove')world.revokeGroup(jid);
         commandQueue=commandQueue.then(async()=>{
             if(closed||!chats.has(jid))return;
             const message=await features.welcome({jid,action,count});
@@ -245,6 +246,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                     response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos iniciados por : e a respostas curtas de atividades ativas. Use somente com a autorização dos participantes. O responsável pode desativar com :off.';
                 } else if (action === 'off') {
                     await chats.set(jid, false);
+                    world.revokeGroup(jid);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (shortMove) {
                     try { response=await features.chessMove({jid,actor,arg:plain,sock,msg,owner}); if(!response&&activity?.name==='uno')response=await features.activity({jid,actor,command:activity,sock,msg,owner}); }
@@ -272,7 +274,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                     if(!accepted)response='🌸 Fila de mídia ocupada. Tente novamente em instantes.';
                     else continue;
                 } else if (extra) {
-                    try { response = await runFeature(extra,jid,actor,msg,owner); }
+                    try { if(extra.name==='sair')world.revoke({jid,actor}); response = await runFeature(extra,jid,actor,msg,owner); }
                     catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; incrementRuntime('errors');console.error('Iris: individual command failed'); }
                 }
                 if(!closed&&response){
