@@ -21,7 +21,7 @@ const frames={simples:{color:'#f4efff'},estrela:{color:'#ffdc7c',item:'estrela'}
 const titles={iniciante:{label:'Iniciante'},aprendiz:{label:'Aprendiz',level:2},explorador:{label:'Explorador',level:5},veterano:{label:'Veterano',level:10},colecionador:{label:'Colecionador',item:'estrela'},campeao:{label:'Campeão',wins:3}};
 const level=p=>1+Math.floor((p.xp||0)/10);
 const n=v=>Number.isSafeInteger(v)&&v>=0?v:0;
-const gameLabels={uno:'UNO',xadrez:'Xadrez',velhadupla:'Velha em dupla',velha:'Jogo da velha',naval:'Batalha naval',damas:'Damas',memoria:'Memória',detetive:'Detetive',stop:'Stop',coop:'Cooperativo',rpg:'RPG',aventura:'Aventura',forca:'Forca',numero:'Número',ppt:'Pedra/papel/tesoura',quiz:'Quiz',encoded:'Palavra codificada',inverse:'Palavra invertida',campeonato:'Campeonato'};
+const gameLabels={uno:'UNO',xadrez:'Xadrez',velhadupla:'Velha em dupla',velha:'Jogo da velha',naval:'Batalha naval',damas:'Damas',memoria:'Memória',detetive:'Detetive',stop:'Stop',coop:'Cooperativo',rpg:'RPG',aventura:'Aventura',forca:'Forca',numero:'Número',ppt:'Pedra/papel/tesoura',quiz:'Quiz',encoded:'Palavra codificada',inverse:'Palavra invertida',campeonato:'Campeonato',domino:'Dominó',unobot:'UNO solo',cruzadas:'Cruzadas','2048':'2048',quizmulti:'Quiz multiplayer',batalhaconhecimento:'Batalha de conhecimentos',tesouro:'Caça ao tesouro',bingoeducativo:'Bingo educativo'};
 export function recordGame(state,game,id,result='w',points=0){
     if(!Object.hasOwn(gameLabels,game)||['uno','xadrez'].includes(game)||!['w','l','d','c'].includes(result))return false;
     const p=state.players?.[id];if(!p)return false;
@@ -32,6 +32,7 @@ export function recordGame(state,game,id,result='w',points=0){
 export function gameStats(state,id){
     const p=state.players[id],r={};
     for(const [game,s] of Object.entries(p?.cardStats||{}))if(Object.hasOwn(gameLabels,game))r[game]={w:n(s.w),l:n(s.l),d:n(s.d),c:n(s.c),points:n(s.points)};
+    for(const [game,value] of Object.entries(p?.games4||{}))if(Object.hasOwn(gameLabels,game)&&!r[game])r[game]={w:0,l:0,d:0,c:n(value),points:0};
     const u=state.megaGames?.unoStats?.[id],c=state.chess?.stats?.[id];
     if(u)r.uno={w:n(u.wins),l:n(u.losses),d:0,c:0,points:0};
     if(c)r.xadrez={w:n(c.w),l:n(c.l),d:n(c.d),c:0,points:0};
@@ -67,7 +68,7 @@ export async function ownProfileImage(msg,b,kind){
 }
 export async function renderProfile(state,id){
     const p=state.players[id],card=p.card||{},stats=gameStats(state,id),name=displayName(state,id);
-    const t=Object.hasOwn(themes,card.theme)&&unlocked(p,stats,themes[card.theme])?themes[card.theme]:themes.iris;
+    const t=Object.hasOwn(themes,card.theme)&&(unlocked(p,stats,themes[card.theme])||p.ownedThemes4?.[card.theme]===true)?themes[card.theme]:themes.iris;
     const frame=Object.hasOwn(frames,card.frame)&&unlocked(p,stats,frames[card.frame])?frames[card.frame]:frames.simples;
     const title=Object.hasOwn(titles,card.title)&&unlocked(p,stats,titles[card.title])?titles[card.title].label:'Iniciante';
     const photo=safeAsset(card.photo,14000),banner=safeAsset(card.banner,26000);
@@ -127,7 +128,8 @@ export async function profileFeature({name,arg='',state,id,rawName,loadAsset}){
     const config=name==='perfiltema'?[themes,'theme']:name==='perfilmoldura'?[frames,'frame']:name==='perfiltitulo'?[titles,'title']:null;
     if(!config)return out(null);
     const [options,key]=config;
-    if(!arg)return out('Opções:\n'+Object.entries(options).map(([k,v])=>k+' — '+(unlocked(p,stats,v)?'disponível':v.level?'nível '+v.level:v.item?'item '+v.item:v.wins?v.wins+' vitórias':'bloqueado')).join('\n'));
-    if(!Object.hasOwn(options,arg)||!unlocked(p,stats,options[arg]))return out('Opção indisponível. Use :'+name+' para consultar requisitos.');
+    const allowed=(k,v)=>unlocked(p,stats,v)||key==='theme'&&p.ownedThemes4?.[k]===true;
+    if(!arg)return out('Opções:\n'+Object.entries(options).map(([k,v])=>k+' — '+(allowed(k,v)?'disponível':v.level?'nível '+v.level:v.item?'item '+v.item:v.wins?v.wins+' vitórias':'bloqueado')).join('\n'));
+    if(!Object.hasOwn(options,arg)||!allowed(arg,options[arg]))return out('Opção indisponível. Use :'+name+' para consultar requisitos.');
     card[key]=arg;return out('Personalização equipada: '+arg+'.',true);
 }
