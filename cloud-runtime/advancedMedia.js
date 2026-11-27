@@ -78,7 +78,7 @@ export async function memeImage(input,arg){
 }
 export async function makeMeme(msg,arg,baileys){
     const media=msg.message?.imageMessage;
-    if(!media||media.viewOnce||!['image/jpeg','image/png','image/webp'].includes(media.mimetype))return '🌸 Envie uma imagem sua ou autorizada com legenda !iris meme texto de cima | texto de baixo.';
+    if(!media||media.viewOnce||!['image/jpeg','image/png','image/webp'].includes(media.mimetype))return '🌸 Envie uma imagem sua ou autorizada com legenda :meme texto de cima | texto de baixo.';
     try{return await memeImage(await download(media,'image',baileys,5*MB),arg);}
     catch{return '🌸 Use foto de até 5 MB e até 75 caracteres por legenda, separadas por |.';}
 }
