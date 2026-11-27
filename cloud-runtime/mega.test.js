@@ -74,7 +74,7 @@ console.log('Iris: private UNO opt-in, separate images, recipient isolation and 
 await g('uno','sair',a);assert.equal(state.megaGames.uno,undefined);
 await g('naval','desafio');
 const nav=await g('naval','aceitar',b);assert.ok(nav.text.image);
-assert.equal((await sharp(nav.text.image).metadata()).width,620);
+assert.equal((await sharp(nav.text.image).metadata()).width,720);
 const n=state.megaGames.naval;assert.equal(n.boards[a].filter(Boolean).length,7);
 assert.equal((await g('naval','a1',c,false,true)).text,null);
 assert.equal((await g('naval','a1',b,false,true)).text,null);
