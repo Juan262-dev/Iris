@@ -25,12 +25,12 @@ import { games5,game5,removeGames5 } from './games5.js';
 import { community5,communityFeature5,commandPermitted,progress5,museumDonation,removeCommunity5 } from './community5.js';
 import { media5,collage5,collageFeature5 } from './media5.js';
 import { infinityCommands,infinityGames,infinityMedia,infinityStudy,infinityMenu,infinityFeature,removeInfinity,pruneInfinity,artCard,artPhoto } from './infinity.js';
-import { worldView,validWorldAction } from './world.js';
-import {settleLiving} from './worldLiving.js';
+import {retiredGames,gameCommands,gameGuide,gameHub} from './gameHub.js';
 import { context5,serialGroups,commandToken,alreadyApplied,markApplied,prune5 } from './transaction5.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto','world',...infinityCommands]);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto','jogos','world',...infinityCommands]);
+for(const name of retiredGames)simple.delete(name);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin,'backupinfinity']);
 export function parseExtra(text, owner) {
     text=String(text||'').trim();
@@ -41,6 +41,7 @@ export function parseExtra(text, owner) {
     // Correct only a small, safe read-only vocabulary; never auto-execute moderation or mutations.
     if(!simple.has(name)){const aliases={meun:'menu',men:'menu',pign:'ping',stauts:'status',infnity:'infinity',mapainfinty:'mapainfinity',ajudainfnity:'ajudainfinity'};if(Object.hasOwn(aliases,name))name=aliases[name];}
 
+    if(retiredGames.has(name))return {name:'jogos',arg:'retirado'};
     if (!simple.has(name) || (needsOwner.has(name) && !owner)) return null;
     return { name, arg: (match[2] || '').trim() };
 }
@@ -62,7 +63,7 @@ export function menu(category='') {
         infinity:infinityMenu,
         geral:'📋 *GERAL*\n:ping — conexão\n:status — situação\n:grupo — participantes\n:regras — regras\n:diagnostico — estado do bot\n:versao | menuimagem | ajuda\n:menupremium | menutexto | ajudacartao comando\nAtalhos: :s, :ping, :menu, :fig',
         midia:'🖼️ *MÍDIA*\n:s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n:texto frase — figurinha de texto\n:s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n:slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n:som — MP4 com áudio (primeiros 10 s)\n:som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n:meme topo | rodapé — legenda de foto\n:imagem — responda a figurinha\n:audio | voz — responda a vídeo ou áudio\n:filtro cinza | sepia | nitido | invertido\n:semfundo | transparente #ffffff — fundo uniforme\n:autor nome — metadados da figurinha\n:trecho 30 — até 20 s a partir de 30 s\n:gif | comprimir — MP4\n:borda #ffffff | :pdf | :montagem — imagem\n:textanim frase — texto animado\n:renomear pacote | autor — figurinha\n:tts frase — voz sintetizada local\n:play piano | :youtube astronomia — pesquisa por tema\n:nasa lua | :pesquisarimagem girassol\n:pacotefig criar nome | adicionar | pegar 1\n:figtexto frase | qrcode texto simples | efeitoanimado brilho | gifvideo\n:animtexto frase | :fundopro | :formatoimagem png\n:colagem novo | adicionar | gerar | apagar\n:videofiltro cinza | :audioefeito eco',
-        jogos:'🎮 *JOGOS*\n:velha | forca | quiz\n:resposta 1, 2 ou 3\n:numero — adivinhe o número\n:ppt pedra — pedra, papel ou tesoura\n:dado | moeda\n:xadrez novo medio — jogar contra o bot\n:xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n:xadrez ajuda — regras, temas e ranking\n:velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n:aventura novo — missão de exploração\n:quiz ciencia | geografia | geral\n:uno novo | entrar | pv | iniciar | mao — cartas no privado\n:naval desafio | aceitar — tiro a1\n:rpg classe explorador | mapa | explorar\n:campeonato entrar | ver\n:uno ranking | stats | gritar\n:damas desafio | aceitar — dama b3 a4\n:memoria novo | entrar — par 2 7\n:stop novo classico 3 90 | entrar | iniciar | pv | resposta | bater | placar | ranking\n:detetive novo | entrar\n:coop novo | entrar | ajudar\n:encoded novo | :inverse novo — palavras\n:domino novo | entrar | pv | iniciar\n:unobot novo | mao | pos 1\n:torneiouno novo | entrar | iniciar\n:2048 novo | cima | direita\n:cruzadas novo | :quizmulti novo\n:ludo novo | entrar | dado | mover 1\n:sudoku novo facil|medio|dificil\n:termo novo | tentar amigo\n:revanche termo | :historicopartidas',
+        jogos:'🎮 *JOGOS*\n:jogos — central completa | solo | grupo | meus | ranking stop\n:velha | forca | quiz\n:resposta 1, 2 ou 3\n:numero — adivinhe o número\n:ppt pedra — pedra, papel ou tesoura\n:dado | moeda\n:xadrez novo medio — jogar contra o bot\n:xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n:xadrez ajuda — regras, temas e ranking\n:velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n:quiz ciencia | geografia | geral\n:uno novo | entrar | pv | iniciar | mao — cartas no privado\n:naval desafio | aceitar — tiro a1\n:campeonato entrar | ver\n:uno ranking | stats | gritar\n:damas desafio | aceitar — dama b3 a4\n:memoria novo | entrar — par 2 7\n:stop novo classico 3 90 | entrar | iniciar | pv | resposta | bater | placar | ranking\n:detetive novo | entrar\n:coop novo | entrar | ajudar\n:encoded novo | :inverse novo — palavras\n:domino novo | entrar | pv | iniciar\n:unobot novo | mao | pos 1\n:torneiouno novo | entrar | iniciar\n:2048 novo | cima | direita\n:cruzadas novo | :quizmulti novo\n:ludo novo | entrar | dado | mover 1\n:sudoku novo facil|medio|dificil\n:termo novo | tentar amigo\n:revanche termo | :historicopartidas',
         diversao:'💬 *DIVERSÃO*\n:chat oi — diálogo local\n:piada | curiosidade\n:apelido nome | apagar\n:aniversario DD/MM | hoje | apagar\n:menufun — menu visual da diversão\n:fun on | off | lista — participação voluntária\n:tesouro novo | :bingoeducativo novo | :batalhaconhecimento novo\n:gincana novo | :festival desenho | :criatividade\n:historiainterativa novo | :comemoracao',
         fun:funMenuText,
         economia:'🏆 *ECONOMIA VIRTUAL*\n:perfil | saldo | diario | ranking\n:loja | comprar item | inventario\n:nivel | conquistas | sair\n:missoes | resgatar nome\n:banco | depositar 10 | sacar 10\n:transferir codigo 10\n:semanal | profissao | trabalhar | tarefadiaria\n:empresa | propriedade | evento participar\n:mercado | anunciar item preco | adquirir codigo\n:vitrine | mochila | perfilvisual\n:nomeperfil nome | whatsapp\n:perfilfoto | :perfilbanner — envie imagem com legenda\n:perfiltema | :perfilmoldura | :perfiltitulo\n:perfilpublico on | off\n:perfilstats | :perfilvisual codigo\n:evoluir empresa | propriedade\n:equipe criar nome | entrar nome | sair\n:troca propor codigo item item | aceitar codigo\n:eventoespecial participar\n:temporada | :missaosemanal | :rankequipes\n:lojatema | :comprartema oceano | :conquistavisual\n:eventotema participar\n:album | :evolucao | :classificacaovisual | :reputacao | :colecao\n:cidade | :imovel construir jardim | :museu doar estrela\n:projetocomunitario contribuir 10 | :especializacao | :missaoequipe ajudar',
@@ -104,6 +105,8 @@ export function makeFeatures() {
     }
     async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert, studio, unoRoute, advancedMedia, original, rawName, loadProfileAsset, funMedia, newMedia, loadPackImage, professionalMedia }) {
         const { name, arg } = command;
+        if(name==='jogos'){if(arg==='retirado')return 'O RPG e o Íris World foram desativados. Use :jogos para conhecer os jogos disponíveis.';const {state,s}=await readGroup(jid);return gameHub(arg,state,actor?hash(s.key,jid+':'+actor):null);}
+        if(arg==='ajuda'&&name!=='xadrez'&&gameGuide(name))return gameGuide(name);
         if (name === 'menutexto') return menu(arg);
         if(['menu','menupremium','menuimagem','ajudacartao'].includes(name)){
             const {state}=await readGroup(jid);const theme=groupConfig(state).theme;
@@ -111,7 +114,7 @@ export function makeFeatures() {
             if(['fun','brincadeiras'].includes(arg.toLowerCase()))return await funMenu();
             return premiumMenu(arg,theme,arg?menu(arg):'🌸 Íris Cloud 6.0 • :infinity | :menu jogos | midia | economia | diversao | admin | geral. :menutexto para lista completa.');
         }
-        if(name==='versao')return '🌸 Íris Cloud 6.0 Infinity — mundo, jogos cooperativos, estudos e estúdio local. :infinity';
+        if(name==='versao')return '🌸 Íris Cloud 6.0 Infinity — Game Center, jogos cooperativos, estudos e estúdio local. :infinity';
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Comandos e respostas de jogos ativos.';
         if (name === 'diagnostico') { const d=runtimeStatus(); return '⚙️ Íris Cloud\nWhatsApp: '+d.whatsapp+'\nBanco: '+d.storage+'\nFila de mídia: '+d.media+'\nFila de comandos: '+d.commands+'\nProcessados: '+d.processed+' | Erros: '+d.errors+' | Lentos: '+d.slow+' | Descartados por limite: '+d.dropped+'\nMemória: '+Math.round(process.memoryUsage().rss/1048576)+' MB\nHeap: '+Math.round(process.memoryUsage().heapUsed/1048576)+' MB\nTempo online: '+Math.floor(process.uptime()/60)+' min\nNode: '+process.versions.node+'\nOperações: serialização por grupo; deduplicação persistente de mutações (até 10 min).'; }
@@ -347,6 +350,7 @@ export function makeFeatures() {
             const arg=input.command?.arg||input.arg||'';
             const exitAllowed=['sair','apagar','off'].includes(arg)&&(['uno','domino','unobot','ludo','sudoku','termo','xadrez','fun','perfilpublico','pacotefig','colagem','festival','imobiliario','trilha','expedicao','reliquia','guilda','simulado','desafioestudo','festivalinfinity','stop'].includes(name));
             if(req&&!exitAllowed&&!commandPermitted(state,name,await adminRole(sock,jid,msg,owner)))return input.shorthand?null:'Comando restrito pelo responsável.';
+            if(gameCommands.has(name)&&!exitAllowed){const required=groupConfig(state).roles?.jogos;const role=owner?'responsavel':required&&required!=='todos'?await adminRole(sock,jid,msg,owner):'membro';if(!await categoryAllowed(state,'jogos',role))return input.shorthand?null:'Jogos limitados pelo responsável.';}
             const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));
             return context5.run({jid,data,token,before},fn);
         };
@@ -355,19 +359,7 @@ export function makeFeatures() {
     const wrapped=input=>execute(input,input.command.name,()=>handle(input),readOnlyMedia.has(input.command.name));
     wrapped.chessMove=input=>execute({...input,shorthand:true},'xadrez',()=>handle.chessMove(input));
     wrapped.activity=input=>execute({...input,shorthand:true},input.command.name,()=>handle.activity(input));
-    wrapped.world=({jid,actor},command=null)=>groupSerial(jid,async()=>{
-        const data=await readGroupRaw(jid),{state,s}=data,id=hash(s.key,jid+':'+actor);
-        if(!state.players[id]||!await categoryAllowed(state,'economia','membro')||!commandPermitted(state,'world','membro'))return null;
-        if(!command){const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));return context5.run({jid,data,token:null,before},async()=>{const r=commandPermitted(state,'offline','membro')?settleLiving(state.players[id]):{changed:false};if(r.changed)await save(s,state);return {view:worldView(state,id),...(r.changed?{message:r.text}:{})};});}
-        if(!validWorldAction(command.name,command.arg)||!commandPermitted(state,command.name,'membro'))return {view:worldView(state,id),message:'Comando indisponível ou limitado pelo responsável.'};
-        if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return {view:worldView(state,id),message:'Aguarde antes de executar outro comando.'};
-        const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));
-        return context5.run({jid,data,token:null,before},async()=>{
-            const result=await infinityFeature({...command,state,id,owner:false});
-            if(result?.changed)await save(s,state);
-            return {view:worldView(state,id),message:typeof result?.text==='string'?result.text:'Comando concluído.'};
-        });
-    });
+    wrapped.world=async()=>null; // RPG retired; retain legacy data without serving it.
     wrapped.stopTick=({jid,now})=>groupSerial(jid,async()=>{const {s,state}=await readGroupRaw(jid);const result=stopTick(state,now);if(result.changed)await save(s,state);return result.text;});
     wrapped.schedule=handle.schedule;wrapped.welcome=handle.welcome;
     return wrapped;
