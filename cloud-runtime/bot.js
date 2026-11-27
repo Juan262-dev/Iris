@@ -4,7 +4,7 @@ import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
 import { infinityMedia } from './infinity.js';
-import { makeWorldSessions } from './world.js';
+import { makePersistentWorld,privateWorldRecipient } from './worldPersistent.js';
 import sharp from 'sharp';
 import { makeTextSticker } from './sticker.js';
 import { stickerCommand, sendSoundSticker } from './stickerCommands.js';
@@ -57,8 +57,13 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     });
     let pending = false;
     let closed = false;
-    const worldVerify=async({jid,route})=>{if(closed||lifecycle.stopping||!chats.has(jid)||!route)return false;try{const meta=await sock.groupMetadata(jid);return !closed&&chats.has(jid)&&(meta.participants||[]).some(p=>[p.id,p.lid,p.phoneNumber].map(unoRoute).includes(route));}catch{return false;}};
-    const world=makeWorldSessions({verify:worldVerify,operate:(identity,command)=>!closed&&!lifecycle.stopping&&chats.has(identity.jid)?features.world(identity,command):null});
+    const worldRecipient=async({jid,route})=>{
+        if(closed||lifecycle.stopping||!chats.has(jid)||!route)return null;
+        const meta=await sock.groupMetadata(jid);
+        return !closed&&chats.has(jid)?privateWorldRecipient(meta.participants,route,unoRoute):null;
+    };
+    const worldVerify=async identity=>!!await worldRecipient(identity);
+    const world=makePersistentWorld({verify:worldVerify,operate:(identity,command)=>!closed&&!lifecycle.stopping&&chats.has(identity.jid)?features.world(identity,command):null});
     lifecycle.world=input=>closed||lifecycle.stopping?{status:503}:world.rpc(input);
     const seen = new Set();
     const allowCommand = makeLimiter();
@@ -145,8 +150,8 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     sock.ev.on('group-participants.update', event => {
         if(closed||!event?.id?.endsWith('@g.us')||!chats.has(event.id)||!['add','remove'].includes(event.action))return;
         const jid=event.id, action=event.action, count=event.participants?.length||0;
-        if(action==='remove')world.revokeGroup(jid);
         commandQueue=commandQueue.then(async()=>{
+            if(action==='remove')await world.revokeGroup(jid);
             if(closed||!chats.has(jid))return;
             const message=await features.welcome({jid,action,count});
             if(message&&!closed&&chats.has(jid))await sock.sendMessage(jid,{text:message});
@@ -246,7 +251,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                     response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos iniciados por : e a respostas curtas de atividades ativas. Use somente com a autorização dos participantes. O responsável pode desativar com :off.';
                 } else if (action === 'off') {
                     await chats.set(jid, false);
-                    world.revokeGroup(jid);
+                    await world.revokeGroup(jid);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (shortMove) {
                     try { response=await features.chessMove({jid,actor,arg:plain,sock,msg,owner}); if(!response&&activity?.name==='uno')response=await features.activity({jid,actor,command:activity,sock,msg,owner}); }
@@ -256,13 +261,14 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                     catch{console.error('Iris: short activity processing failed');}
                 } else if(extra?.name==='world'){
                     const identity={jid,actor,route:unoRoute(owner?sock.user?.id:msg.key?.participant)};
-                    if(extra.arg==='sair'){world.revoke(identity);response='🌸 Sessão do Íris World revogada.';}
+                    if(extra.arg==='sair'){try{await world.revoke(identity);response='🌸 Sessão do Íris World revogada.';}catch{response='🌸 Não foi possível revogar a sessão. Tente novamente.';}}
                     else if(extra.arg){response='🌸 Use :world ou :world sair. Nunca envie o código de acesso no grupo.';}
                     else try{
-                        if(!await worldVerify(identity)||!await features.world(identity)){response='🌸 Use :perfil e confirme que o RPG está permitido neste grupo.';}
-                        else{const code=world.issue(identity);if(!code)response='🌸 Limite de sessões atingido. Tente mais tarde.';
-                            else try{await sock.sendMessage(identity.route,{text:'🌸 Íris World — https://iris-cloud-oqit.onrender.com/world\nCódigo de acesso temporário (5 minutos):\n'+code+'\nCole somente no site. Não compartilhe. :world sair no grupo revoga a sessão.'});response='🌸 Código do Íris World enviado no privado. Abra https://iris-cloud-oqit.onrender.com/world';}
-                            catch{world.revoke(identity);response='🌸 Não consegui entregar o código no privado. Nenhum código será mostrado no grupo.';}
+                        const recipient=await worldRecipient(identity);
+                        if(!recipient||!await features.world(identity)){response='🌸 Use :perfil e confirme que o RPG está permitido neste grupo.';}
+                        else{const code=await world.issue(identity);if(!code)response='🌸 Limite de sessões atingido. Tente mais tarde.';
+                            else try{await sock.sendMessage(recipient,{text:'🌸 Íris World — https://iris-cloud-oqit.onrender.com/world\nCódigo de acesso temporário (5 minutos):\n'+code+'\nCole somente no site. Não compartilhe. O login fica salvo neste navegador até sair ou revogar o acesso com :world sair no grupo.'});response='🌸 Código do Íris World enviado no privado. Abra https://iris-cloud-oqit.onrender.com/world';}
+                            catch{await world.cancel(identity);response='🌸 Não consegui entregar o código no privado. Nenhum código será mostrado no grupo.';}
                         }
                     }catch{response='🌸 Íris World indisponível no momento.';}
                 } else if (extra&&mediaNames.has(extra.name)){
@@ -274,7 +280,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                     if(!accepted)response='🌸 Fila de mídia ocupada. Tente novamente em instantes.';
                     else continue;
                 } else if (extra) {
-                    try { if(extra.name==='sair')world.revoke({jid,actor}); response = await runFeature(extra,jid,actor,msg,owner); }
+                    try { if(extra.name==='sair')await world.revoke({jid,actor}); response = await runFeature(extra,jid,actor,msg,owner); }
                     catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; incrementRuntime('errors');console.error('Iris: individual command failed'); }
                 }
                 if(!closed&&response){
