@@ -1,3 +1,4 @@
+import {navalVisual} from './gameVisual.js';
 import { advanceTournament } from './tournament4.js';
 import { recordGame,displayName } from './profileCard.js';
 import { randomInt } from 'node:crypto';
@@ -19,16 +20,7 @@ function navalGrid(){return Array.from({length:36},()=>false);}
 function fleet(choose){const board=navalGrid();for(const len of [3,2,2]){const spots=[];for(let r=0;r<6;r++)for(let c=0;c<6;c++)for(const d of [0,1]){const cells=Array.from({length:len},(_,i)=>[r+(d?i:0),c+(d?0:i)]);if(cells.every(([y,x])=>y<6&&x<6&&!board[y*6+x]))spots.push(cells);}const spot=spots[choose(spots.length)];for(const [y,x] of spot)board[y*6+x]=true;}return board;}
 const square=t=>/^[a-f][1-6]$/.test(t)?(Number(t[1])-1)*6+t.charCodeAt(0)-97:-1;
 const escaped=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-export async function navalImage(g){
-    const parts=['<rect width="620" height="350" rx="18" fill="#10243b"/>'];
-    for(let k=0;k<2;k++){
-        const id=g.ids[k],ox=20+k*310;
-        parts.push('<text x="'+(ox+140)+'" y="26" text-anchor="middle" fill="white" font-size="16">'+escaped(label(id))+' — disparos recebidos</text>');
-        for(let c=0;c<6;c++){parts.push('<text x="'+(ox+35+c*44)+'" y="52" text-anchor="middle" fill="#cce7ff">'+String.fromCharCode(65+c)+'</text>');parts.push('<text x="'+(ox+2)+'" y="'+(82+c*44)+'" fill="#cce7ff">'+(c+1)+'</text>');}
-        for(let i=0;i<36;i++){const x=ox+14+(i%6)*44,y=59+Math.floor(i/6)*44,v=g.shots[id][i];parts.push('<rect x="'+x+'" y="'+y+'" width="42" height="42" rx="5" fill="'+(v==='hit'?'#ef635b':v==='miss'?'#9bc8e2':'#26577b')+'"/>');if(v)parts.push('<text x="'+(x+21)+'" y="'+(y+29)+'" text-anchor="middle" font-size="24" fill="#10243b">'+(v==='hit'?'×':'•')+'</text>');}
-    }
-    return sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="620" height="350">'+parts.join('')+'</svg>')).png().toBuffer();
-}
+export async function navalImage(g){return (await navalVisual(g,'Batalha Naval')).image;}
 const classes={explorador:'Explorador',artista:'Artista',estudioso:'Estudioso'};
 const maps={vila:'Vila das Flores',bosque:'Bosque das Trilhas',arquivo:'Arquivo das Estrelas'};
 export async function megaGame({name,arg='',state,id,now=Date.now(),choose=randomInt,activeOnly=false,owner=false,route=null}){
@@ -113,6 +105,10 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         g.expires=now+86400000;return out(await pack(updated,hand.length===1?'🃏 UNO! '+label(id)+' tem uma carta.':''),true);
     }
     if(name==='naval'){
+        arg=String(arg).trim().toLowerCase();
+        if(arg==='m'||arg==='mesa')arg='tabuleiro';
+        if(arg==='novo')arg='desafio';
+        if(arg==='entrar')arg='aceitar';
         let g=m.naval;if(g&&g.expires<=now){delete m.naval;g=null;}
         if(activeOnly&&(!g?.boards||g.ids[g.turn]!==id))return out(null);
         if(arg==='desafio'){
@@ -123,19 +119,27 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         if(arg==='aceitar'){
             if(g.ids.length!==1||g.ids[0]===id)return out('Desafio indisponível.');
             g.ids.push(id);g.boards={};g.shots={};g.turn=0;g.expires=now+86400000;for(const k of g.ids){g.boards[k]=fleet(choose);g.shots[k]={};}
-            return out({image:await navalImage(g),caption:'🚢 Frota de 3 navios colocada automaticamente e mantida oculta. Vez de '+label(g.ids[0])+'. Envie tiro a1 até f6.'},true);
+            return out({image:await navalImage(g),caption:'🚢 Frota de 3 navios colocada automaticamente e mantida oculta. Vez de '+label(g.ids[0])+'. Use :naval a1 até f6. :naval pv para receber sua frota privada.'},true);
         }
         if(!g.ids.includes(id))return out(activeOnly?null:'Você não participa.');
         if(arg==='sair'){delete m.naval;return out('Partida encerrada.',true);}
         if(!g.boards)return out('Aguardando aceite.');
-        if(!arg||arg==='tabuleiro')return out({image:await navalImage(g),caption:'Vez de '+label(g.ids[g.turn])});
+        const pack=async(ids,caption,show=true)=>{
+            const publicPart=show?await navalVisual(g,caption):caption;
+            const privateParts=[];
+            for(const k of [...new Set(ids)])if(g.ids.includes(k)&&validUnoRoute(g.routes?.[k]))privateParts.push({to:g.routes[k],content:await navalVisual(g,'Sua frota privada. No grupo: :naval b4 | :naval m',k)});
+            return privateParts.length?{unoDelivery:{game:'naval',public:publicPart,private:privateParts}}:publicPart;
+        };
+        if(arg==='pv'){if(!validUnoRoute(route)||Object.entries(g.routes||{}).some(([k,v])=>k!==id&&v===route))return out('Contato inválido.');g.routes??={};g.routes[id]=route;return out(await pack([id],'Frota privada enviada.',false),true);}
+        if(arg==='mao'||arg==='frota'){if(!validUnoRoute(g.routes?.[id]))return out('Confirme :naval pv para receber sua frota em privado.');return out(await pack([id],'Frota privada enviada.',false));}
+        if(!arg||arg==='tabuleiro')return out(await navalVisual(g,'Vez de '+label(g.ids[g.turn])));
         if(g.ids[g.turn]!==id)return out(activeOnly?null:'Aguarde sua vez.');
         const i=square(arg);if(i<0)return out('Use tiro a1 até f6.');
         const target=g.ids[1-g.turn];if(g.shots[target][i])return out('Casa já escolhida.');
         const hit=g.boards[target][i];g.shots[target][i]=hit?'hit':'miss';
         const won=g.boards[target].every((v,j)=>!v||g.shots[target][j]==='hit');
         if(!won){g.turn=1-g.turn;g.expires=now+86400000;}else {for(const k of g.ids)recordGame(state,'naval',k,k===id?'w':'l');delete m.naval;}
-        return out({image:await navalImage(g),caption:(hit?'Acertou!':'Água!')+'\n'+(won?label(id)+' venceu!':'Vez de '+label(g.ids[g.turn]))},true);
+        return out(await pack(won?[]:g.ids,(hit?'Acertou!':'Água!')+'\n'+(won?label(id)+' venceu!':'Vez de '+label(g.ids[g.turn]))),true);
     }
     if(name==='rpg'){
         const p=state.players[id];if(!p)return out('Crie seu perfil: :perfil.');
