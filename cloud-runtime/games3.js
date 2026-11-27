@@ -1,4 +1,4 @@
-import {memoryBoard} from './gameVisual.js';
+import {memoryBoard,damasVisual} from './gameVisual.js';
 import {stopGame} from './stopGame.js';
 import { recordGame } from './profileCard.js';
 import { randomInt } from 'node:crypto';
@@ -31,15 +31,7 @@ function moves(b,side,only=-1){
     }
     return all.some(m=>m.cap>=0)?all.filter(m=>m.cap>=0):all;
 }
-async function damasBoard(g,caption){
-    const w=480,s=52,body=['<rect width="480" height="480" fill="#201a30"/>'];
-    for(let i=0;i<8;i++){body.push('<text x="'+(45+i*s)+'" y="20" text-anchor="middle" fill="white">'+String.fromCharCode(97+i)+'</text>','<text x="9" y="'+(54+i*s)+'" fill="white">'+(i+1)+'</text>');}
-    for(let i=0;i<64;i++){const r=Math.floor(i/8),c=i%8,x=20+c*s,y=26+r*s;
-        body.push('<rect x="'+x+'" y="'+y+'" width="'+s+'" height="'+s+'" fill="'+((r+c)%2?'#8875a3':'#f5e6ca')+'"/>');
-        if(g.b[i]){const p=g.b[i];body.push('<circle cx="'+(x+s/2)+'" cy="'+(y+s/2)+'" r="19" fill="'+(p.toLowerCase()==='b'?'#25384f':'#c34c5c')+'" stroke="white" stroke-width="2"/>');if(p===p.toUpperCase())body.push('<text x="'+(x+s/2)+'" y="'+(y+32)+'" text-anchor="middle" fill="white" font-size="20">D</text>');}
-    }
-    return {image:await sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+w+'"><g font-family="sans-serif">'+body.join('')+'</g></svg>')).png().toBuffer(),caption};
-}
+async function damasBoard(g,caption){return damasVisual(g,caption);}
 export async function game3({name,arg='',state,id,now=Date.now(),choose=randomInt,activeOnly=false}){
     if(!games3.includes(name))return null;
     if(name==='stop')return stopGame({state,id,arg,now,choose,activeOnly});
@@ -90,7 +82,7 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         g.ids.push(id);g.b=pieces();g.turn=0;g.forced=-1;g.expires=now+86400000;return out(await damasBoard(g,'Vez de '+label(g.ids[0])+'. Use dama b3 a4.'),true);
     }
     if(!g.ids.includes(id)||!g.b)return out(activeOnly?null:'Aguardando participantes.');
-    if(!arg||arg==='mesa')return out(await damasBoard(g,'Vez de '+label(g.ids[g.turn])));
+    if(!arg||arg==='mesa'||arg==='m')return out(await damasBoard(g,'Vez de '+label(g.ids[g.turn])));
     if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
     if(arg==='jogadas'){const cellName=i=>String.fromCharCode(97+i%8)+(Math.floor(i/8)+1);return out('Jogadas válidas: '+moves(g.b,g.turn===0?'b':'r',g.forced).map(v=>cellName(v.from)+' '+cellName(v.to)).join(' | '));}
     const m=/^(?:dama )?([a-h][1-8]) ([a-h][1-8])$/.exec(arg);
