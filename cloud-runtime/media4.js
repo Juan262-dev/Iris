@@ -19,14 +19,14 @@ const txt=(x,y,s,size=24,color='#fff',center=false)=>'<text x="'+x+'" y="'+y+'" 
 const r=(x,y,w,h,fill)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="14" fill="'+fill+'"/>';
 const sections={
  geral:[':ping • :status • :diagnostico',':menutexto • :versao • :ajuda',':ajudacartao comando'],
- jogos:[':domino novo • entrar • pv • iniciar',':unobot novo • pos 1 • mao',':torneiouno novo • entrar • iniciar',':2048 novo • cima • direita',':ludo • :sudoku • :termo • :historicopartidas',':cruzadas novo • :quizmulti novo',':uno • :xadrez • :damas • :naval',':memoria • :stop • :forca • :quiz'],
+ jogos:[':domino novo • entrar • pv • 2 e/d',':unobot novo • pos 1 • mao',':torneiouno novo • entrar • iniciar',':2048 novo • cima • direita',':ludo • :sudoku • :termo • :historicopartidas',':cruzadas novo • :quizmulti novo',':uno • :xadrez • :damas • :naval',':memoria • :stop • :forca • :quiz'],
  economia:[':temporada • :rankequipes',':missaosemanal participar • resgatar',':lojatema • :comprartema oceano',':empresa • :evoluir empresa',':perfil • :perfilvisual • :conquistavisual',':banco • :saldo • :diario • :loja',':cidade • :imovel • :museu • :missaoequipe',':album • :reputacao • :evolucao • :colecao'],
  midia:[':pacotefig criar nome','Imagem na legenda: :figtexto frase',':qrcode texto simples • :efeitoanimado','GIF como documento: :gifvideo',':s • :fig • :som • :pdf • :tts',':animtexto • :fundopro • :colagem',':formatoimagem • :videofiltro • :audioefeito'],
  diversao:[':menufun • :fun on • :fun off',':tesouro novo • :bingoeducativo novo',':batalhaconhecimento novo',':eventotema participar',':abraco • :elogio • :dupla • :adivinha',':gincana • :festival • :historiainterativa'],
  admin:[':configgrupo • :temagrupo oceano',':permissao jogos admin',':avisoregistrar regras • :avisohistorico',':salvarconfig • :restaurarconfig confirmar',':regras • :backup • :agenda',':painel • :comandopermissao • :auditoria']
 };
 const helps={
- domino:'Dominó de 2 a 4 jogadores. Cada um confirma :domino pv. O criador inicia. :domino jogar 1-2 esquerda ou direita. :domino comprar quando não há peça válida.',
+ domino:'Dominó de 2 a 4 jogadores. Cada um confirma :domino pv. O criador inicia. :domino 2 para jogar peça nº 2; :domino 2 e ou 2 d para escolher a ponta. :domino c compra; :domino p passa; :domino m mostra a mesa. :domino mao envia suas peças no privado.',
  unobot:'UNO contra a Íris com cartas especiais. :unobot novo autoriza o envio da mão no privado. :unobot pos 1, comprar, mao ou sair.',
  torneiouno:'Torneio UNO com 2, 4 ou 8 inscritos. Responsável inicia; cada dupla confirma :uno pv. Avança pelo resultado real.',
  '2048':'Use :2048 novo, depois cima, baixo, esquerda ou direita. Junte números iguais até chegar a 2048.',
