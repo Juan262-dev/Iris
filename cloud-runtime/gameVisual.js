@@ -136,3 +136,73 @@ export async function navalVisual(g,caption,privateId=null){
  b+=txt(35,545,'× Acerto   •   Ponto: água'+(own?'   •   Verde: sua frota':''),19,'#d6e7f2');
  b+=footer(568,':naval b4  •  :naval m  •  :naval mao');return png(644,b,caption);
 }
+
+const cleanCaption=s=>String(s).replace(/\*/g,'').replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu,'').trim();
+function bodyLines(lines,y=180,size=23){let b='';for(const line of lines){for(const r of wrap(line,46)){if(r)b+=txt(36,y,r,size);y+=30;}}return {b,y};}
+function panel(title,sub,lines,caption,accent='#b9a2ef'){
+ const result=bodyLines(lines);return png(result.y+86,header(title,sub,accent)+result.b+footer(result.y+8,'Confira os comandos na legenda'),caption);
+}
+async function quizVisual(title,caption){
+ const lines=cleanCaption(caption).split('\n').filter(Boolean),options=lines.filter(l=>/^[123]\.\s+/.test(l));
+ if(options.length<2)return gameNotice(title,caption);
+ let b=header(title,'Escolha uma alternativa','#82c8e4'),y=184;
+ const question=lines.filter(l=>!options.includes(l)&&!/^(?:Envie|Use|:|Quiz Íris)/i.test(l)).slice(0,4);
+ const q=bodyLines(question,y);b+=q.b;y=q.y+12;
+ options.forEach(l=>{const n=l[0],rows=wrap(l.slice(2).trim(),40),h=42+rows.length*28;b+=rect(30,y,660,h,'#3b3358',12)+circle(70,y+h/2,23,'#61528b')+txt(70,y+h/2+8,n,23,'#fff','middle',700);rows.forEach((r,i)=>b+=txt(110,y+31+i*28,r,22));y+=h+13;});
+ b+=footer(y+4,'Responda com 1, 2 ou 3');return png(y+80,b,caption);
+}
+async function velhaVisual(title,caption){
+ const rows=caption.split('\n').filter(l=>l.includes('│')).map(l=>l.split('│').map(v=>v.trim()));
+ if(rows.length!==3||rows.some(r=>r.length!==3))return gameNotice(title,caption);
+ let b=header(title,'Escolha uma casa livre','#b9a2ef');
+ rows.flat().forEach((v,i)=>{const x=105+i%3*170,y=178+Math.floor(i/3)*170;b+=rect(x,y,160,160,'#3f345c',14);
+ if(v==='❌'||v==='X'){b+='<path d="M'+(x+45)+' '+(y+45)+'l70 70m0 -70l-70 70" fill="none" stroke="#e58b91" stroke-width="14" stroke-linecap="round"/>';}
+ else if(v==='⭕'||v==='O')b+=circle(x+80,y+80,42,'none','#84cce8',14);
+ else b+=txt(x+80,y+96,v,44,'#c1b2df','middle',700);});
+ b+=footer(704,':'+(title==='VELHA EM DUPLA'?'velhadupla':'velha')+' 1 a 9');return png(780,b,caption);
+}
+async function forcaVisual(title,caption){
+ const word=caption.match(/(?:[A-Z_]\s+){2,}[A-Z_](?=\s|$)/)?.[0];
+ if(!word)return gameNotice(title,caption);
+ const letters=word.trim().split(/\s+/),error=Number(caption.match(/Erros:\s*(\d)\/6/)?.[1]||0),cols=Math.min(10,letters.length),s=Math.min(66,Math.floor(650/cols)),rows=Math.ceil(letters.length/cols);
+ let b=header(title,'Descubra a palavra secreta','#e4b75f');
+ letters.forEach((c,i)=>{const x=(720-cols*s)/2+i%cols*s,y=184+Math.floor(i/cols)*s;b+=rect(x+3,y,s-6,s-8,c==='_'?'#42365d':'#336655',7)+txt(x+s/2,y+s*.67,c==='_'?'':c,Math.min(35,s*.55),'#fff','middle',700);});
+ let y=190+rows*s;b+=txt(36,y+30,'Tentativas restantes: '+(6-error)+'/6',25,'#e7d1a0','start',700);
+ for(let i=0;i<6;i++)b+=rect(36+i*110,y+52,96,23,i<6-error?'#7bb89b':'#544461',8);
+ b+=footer(y+99,':forca a  •  :forca palavra  •  :forca mesa');return png(y+175,b,caption);
+}
+async function numberVisual(title,caption){
+ const m=caption.match(/Intervalo:\s*(\d+)[–-](\d+)/i),attempt=caption.match(/Restam\s+(\d+)\s+tentativas/i);
+ if(!m&&!/número de 1 a 100/.test(caption))return gameNotice(title,caption);
+ const lo=m?Number(m[1]):1,hi=m?Number(m[2]):100,n=attempt?Number(attempt[1]):8;
+ let b=header(title,'Encontre o número secreto','#82c8e4')+rect(30,176,660,128,'#3b3358',15)+txt(360,214,'INTERVALO POSSÍVEL',19,'#c8bddf','middle',700)+txt(360,278,lo+' — '+hi,55,'#e0f2ff','middle',700);
+ b+=rect(45,336,630,18,'#4c4068',8)+rect(45+(lo-1)*6.3,336,Math.max(6.3,(hi-lo+1)*6.3),18,'#84cce8',8)+txt(45,387,'1',19)+txt(675,387,'100',19,'#fff','end');
+ b+=txt(45,438,'Tentativas restantes: '+n,25,'#e5dafa','start',700)+footer(470,':numero 50  •  :numero status');return png(546,b,caption);
+}
+async function luckVisual(name,title,caption){
+ if(name==='dado'){const n=Number(caption.match(/Resultado:\s*([1-6])/)?.[1]);if(!n)return gameNotice(title,caption);
+ let b=header(title,'Resultado da rodada','#e4b75f')+rect(240,180,240,240,'#fff5dc',30);for(const [x,y] of pips[n])b+=circle(290+x*70,230+y*70,18,'#302844');b+=footer(452,'Sem apostas • :dado');return png(528,b,caption);}
+ if(name==='moeda'){const side=caption.includes('Cara')?'CARA':'COROA';let b=header(title,'Resultado da rodada','#e4b75f')+circle(360,308,132,'#c49b47','#f3d487',8)+circle(360,308,108,'#d5ae59','#a68139',3)+txt(360,323,side,38,'#493a23','middle',700)+footer(464,'Sem apostas • :moeda');return png(540,b,caption);}
+ const m=caption.match(/Você:\s*(pedra|papel|tesoura)\s*\|\s*Íris:\s*(pedra|papel|tesoura)/i);if(!m)return gameNotice(title,caption);
+ let b=header(title,'Você contra Íris','#e4b75f');[m[1],m[2]].forEach((v,i)=>{const x=40+i*340;b+=rect(x,180,300,170,'#3b3358',15)+txt(x+150,222,i?'ÍRIS':'VOCÊ',22,'#c8bddf','middle',700)+txt(x+150,300,v.toUpperCase(),33,'#fff','middle',700);});b+=txt(360,399,caption.split('\n').at(-1),26,'#e4d8f5','middle',700)+footer(430,':ppt pedra  •  papel  •  tesoura');return png(506,b,caption);
+}
+async function trackVisual(title,caption){
+ const rows=[...caption.matchAll(/^(.+?) • casa (\d+) • (\d+) pontos$/gm)].slice(0,4);
+ if(!rows.length)return quizVisual(title,caption);
+ let b=header(title,'Progresso da partida','#82c8e4'),y=180;
+ for(const [_,label,pos,score] of rows){b+=rect(30,y,660,100,'#393052',12)+txt(46,y+29,label,20,'#fff','start',700)+txt(673,y+29,score+' pts',21,'#a3debe','end',700)+rect(46,y+45,628,18,'#514465',8)+rect(46,y+45,Math.max(0,Math.min(628,Number(pos)*628/18)),18,'#82c8e4',8)+txt(46,y+86,'Casa '+pos,18);y+=111;}
+ const extra=cleanCaption(caption).split('\n').filter(l=>!/ • casa \d+ • \d+ pontos$/.test(l)).slice(0,9),tail=bodyLines(extra,y+20,21);b+=tail.b+footer(tail.y+8,'Jogue usando os comandos na legenda');return png(tail.y+84,b,caption);
+}
+// Operates exclusively on text already approved for the current group; never reads secret game state.
+export async function visualGameResponse(name,title,response){
+ if(typeof response!=='string'||!response.trim()||response.length>4000)return response;
+ if(/^(?:📩|Não consegui|STOP privado|Jogos limitados|Comando restrito|Recurso limitado|🌸 Não foi possível)/.test(response))return response;
+ const cap=response,titleUpper=title.toUpperCase();
+ if(['quiz','quizmulti','batalhaconhecimento','bingoeducativo','detetive'].includes(name))return quizVisual(titleUpper,cap);
+ if(['velha','velhadupla'].includes(name))return velhaVisual(titleUpper,cap);
+ if(name==='forca')return forcaVisual(titleUpper,cap);
+ if(name==='numero')return numberVisual(titleUpper,cap);
+ if(['dado','moeda','ppt'].includes(name))return luckVisual(name,titleUpper,cap);
+ if(['imobiliario','trilha','expedicao','reliquia'].includes(name))return trackVisual(titleUpper,cap);
+ return gameNotice(titleUpper,cap);
+}
