@@ -85,6 +85,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     sock.ev.on('connection.update', async update => {
         if (closed) return;
         if (update.connection === 'open') {
+            lifecycle.onPairingClear?.();
             openedAt=Date.now();
             setRuntime('whatsapp','conectado');
             if(!scheduleTimer){scheduleTimer=setInterval(scheduleTick,30000);scheduleTimer.unref?.();}
@@ -92,6 +93,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             console.log('Iris: WhatsApp connected');
         }
         if (update.connection === 'close') {
+            lifecycle.onPairingClear?.();
             closed = true;
             if(dbTimer){clearInterval(dbTimer);dbTimer=null;}
             if(scheduleTimer){clearInterval(scheduleTimer);scheduleTimer=null;}
@@ -118,12 +120,14 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             console.log('Iris: check linked-device status before restarting.');
             return;
         }
-        if (update.qr && !auth.state.creds.registered && !pending && process.env.IRIS_ALLOW_PAIRING === 'true') {
+        if (update.qr && !auth.state.creds.registered && !pending && (!lifecycle.localPrivate||!lifecycle.pairingRequested) && process.env.IRIS_ALLOW_PAIRING === 'true') {
             pending = true;
+            if(lifecycle.localPrivate)lifecycle.pairingRequested=true;
             try {
                 const code = await sock.requestPairingCode(pairingNumber);
-                // Short-lived authorization code, available only in the owner's private Render logs.
-                console.log('Iris: private device pairing code: ' + code);
+                // Never emit a local private pairing code to logs or the shared Manager.
+                if(lifecycle.localPrivate)lifecycle.onPairingCode?.(code);
+                else console.log('Iris: private device pairing code: '+code);
             } catch {
                 console.error('Iris: pairing request failed; check the official linked-device screen.');
             }
