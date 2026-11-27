@@ -45,12 +45,12 @@ export async function removeBackground(data,arg='',sticker=false){
     }
     return {image:await s.png().toBuffer(),caption:'🌸 Fundo de cor uniforme removido (quando conectado às bordas).'};
 }
-export async function stickerAuthor(data,name){
-    if(!name||name.length>40||data.length>450000||data.toString('ascii',0,4)!=='RIFF'||data.toString('ascii',8,12)!=='WEBP')throw Error('invalid');
+export async function stickerAuthor(data,name,pack='Íris Cloud'){
+    if(!name||name.length>40||!pack||pack.length>40||data.length>450000||data.toString('ascii',0,4)!=='RIFF'||data.toString('ascii',8,12)!=='WEBP')throw Error('invalid');
     const meta=await sharp(data,{animated:true,limitInputPixels:18000000}).metadata();
     if(meta.format!=='webp'||meta.width>512||(meta.pageHeight||meta.height)>512||(meta.pages||1)>60)throw Error('invalid sticker');
     // Keep original animation intact. Add standardized WhatsApp sticker EXIF metadata.
-    const payload=Buffer.from(JSON.stringify({'sticker-pack-id':'iris-cloud-2','sticker-pack-name':'Íris Cloud','sticker-pack-publisher':name,emojis:['🌸']}));
+    const payload=Buffer.from(JSON.stringify({'sticker-pack-id':'iris-cloud-2','sticker-pack-name':pack,'sticker-pack-publisher':name,emojis:['🌸']}));
     const head=Buffer.from([0x49,0x49,0x2a,0,8,0,0,0,1,0,0x41,0x57,7,0,0,0,0,0,0x16,0,0,0]);head.writeUInt32LE(payload.length,14);
     const exif=Buffer.concat([head,payload]);
     const chunks=[];let flags=0,extended=null;
@@ -88,9 +88,11 @@ export async function videoStudio(data,name,start=0){
 export async function studioCommand(msg,b,name,arg){
     const m=selectMedia(msg)?.message;
     try{
-        if(name==='autor'){
+        if(name==='autor'||name==='renomear'){
             if(!m?.stickerMessage)return 'Responda a uma figurinha autorizada com :autor nome (até 40 caracteres).';
-            return await stickerAuthor(await download(m.stickerMessage,'sticker',b,450000),arg);
+            const parts=arg.split('|').map(s=>s.trim());
+            if(name==='renomear'&&(parts.length!==2||parts.some(s=>!s||s.length>40)))return 'Use :renomear pacote | autor (até 40 caracteres cada).';
+            return await stickerAuthor(await download(m.stickerMessage,'sticker',b,450000),name==='renomear'?parts[1]:arg,name==='renomear'?parts[0]:'Íris Cloud');
         }
         if(['filtro','semfundo','transparente'].includes(name)){
             if(!m?.imageMessage||!['image/jpeg','image/png','image/webp'].includes(m.imageMessage.mimetype))return 'Responda a uma imagem autorizada.';
