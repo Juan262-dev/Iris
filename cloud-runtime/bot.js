@@ -13,6 +13,7 @@ import { megaShort } from './megaGames.js';
 import { short3 } from './games3.js';
 import { media3,media3Names } from './media3.js';
 import { originalMedia,searchOriginal,tts } from './originalCompat.js';
+import { ownProfileImage } from './profileCard.js';
 import { unoRoute,dispatchUno } from './unoVisual.js';
 import { studioCommand,studioNames } from './studio.js';
 import { convertMedia,converterNames } from './converters.js';
@@ -143,7 +144,7 @@ export async function startHeadlessBot(restartCount = 0) {
             catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use :s.'},{quoted:msg});}
         }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
     }
-    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg),advancedMedia:(m,name,arg)=>media3(m,baileys,name,arg),original:async(m,name,arg)=>{try{return name==='tts'?await tts(arg):name==='renomear'?await studioCommand(m,baileys,name,arg):await searchOriginal(name,arg);}catch{return '🌸 Não foi possível concluir. Use um tema disponível ou texto de até 200 caracteres.';}},unoRoute:extra.name==='uno'&&extra.arg==='pv'?unoRoute(owner?sock.user?.id:msg.key?.participant):null});
+    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,rawName:msg.pushName||(owner?sock.user?.name:null),loadProfileAsset:kind=>ownProfileImage(msg,baileys,kind),sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg),advancedMedia:(m,name,arg)=>media3(m,baileys,name,arg),original:async(m,name,arg)=>{try{return name==='tts'?await tts(arg):name==='renomear'?await studioCommand(m,baileys,name,arg):await searchOriginal(name,arg);}catch{return '🌸 Não foi possível concluir. Use um tema disponível ou texto de até 200 caracteres.';}},unoRoute:extra.name==='uno'&&extra.arg==='pv'?unoRoute(owner?sock.user?.id:msg.key?.participant):null});
     const fresh=msg=>{
         const ts=Number(msg.messageTimestamp||0);
         return Number.isFinite(ts)&&Math.abs(Date.now()/1000-ts)<=120;
