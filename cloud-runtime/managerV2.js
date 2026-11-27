@@ -1,6 +1,6 @@
 import { settings } from '../lib/Initialize/cloudStorage.js';
 export const modules=['geral','estudos','jogos','midia','economia','diversao'];
-export const commands={geral:['menu','ping','ajuda','status'],estudos:['quiz','resposta'],jogos:['uno','unobot','domino','xadrez','sudoku','termo','ludo','2048'],midia:['s','figtexto','qrcode','colagem','formatoimagem'],economia:['perfil','saldo','diario','loja','cidade'],diversao:['fun','verdade','adivinha','gincana','memealeatorio']};
+export const commands={geral:['menu','ping','ajuda','status','infinity','ajudainfinity'],estudos:['quiz','resposta','estudar','simulado','flashcard','desafioestudo','torneioestudo'],jogos:['uno','unobot','domino','xadrez','sudoku','termo','ludo','2048','imobiliario','trilha','expedicao','reliquia'],midia:['s','figtexto','qrcode','colagem','formatoimagem','cartaoarte','fotoarte','figurarte','videoarte'],economia:['perfil','saldo','diario','loja','cidade','mapainfinity','explorar','construir','oficina','npc','guilda','projetoinfinity','temporadainfinity','missaoinfinity','passaporte'],diversao:['fun','verdade','adivinha','gincana','memealeatorio','festivalinfinity']};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const keys=new Set(Object.values(commands).flat());
 const fields='id,display_name,prefix,greeting,modules,commands,groups,desired_enabled,created_at';
@@ -10,7 +10,7 @@ export function normalizeConfig(v){
  if(!v.modules||typeof v.modules!=='object'||Array.isArray(v.modules)||Object.keys(v.modules).some(k=>!modules.includes(k)||typeof v.modules[k]!=='boolean'))return null;
  if(!v.commands||typeof v.commands!=='object'||Array.isArray(v.commands)||Object.keys(v.commands).some(k=>!keys.has(k)||typeof v.commands[k]!=='boolean'))return null;
  if(!Array.isArray(v.groups)||v.groups.length>20||v.groups.some(g=>typeof g!=='string'||!/^[\p{L}\p{M}\p{N} _.-]{1,40}$/u.test(g)))return null;
- return {display_name:name(v.name),prefix:v.prefix,greeting:v.greeting,modules:Object.fromEntries(modules.map(k=>[k,v.modules[k]!==false])),commands:Object.fromEntries(Object.entries(v.commands)),groups:[...new Set(v.groups)]};
+ return {display_name:name(v.name),prefix:v.prefix,greeting:v.greeting,modules:Object.fromEntries(modules.map(k=>[k,v.modules[k]!==false])),commands:Object.fromEntries(Object.entries(v.commands).filter(([,enabled])=>enabled===false)),groups:[...new Set(v.groups)]};
 }
 async function db(table,{method='GET',query={},data}={}){
  const s=settings('iris-manager-v2'),url=new URL('/rest/v1/'+table,s.endpoint);
