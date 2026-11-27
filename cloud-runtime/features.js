@@ -24,10 +24,11 @@ import { games5,game5,removeGames5 } from './games5.js';
 import { community5,communityFeature5,commandPermitted,progress5,museumDonation,removeCommunity5 } from './community5.js';
 import { media5,collage5,collageFeature5 } from './media5.js';
 import { infinityCommands,infinityGames,infinityMedia,infinityStudy,infinityMenu,infinityFeature,removeInfinity,pruneInfinity,artCard,artPhoto } from './infinity.js';
+import { worldView,validWorldAction } from './world.js';
 import { context5,serialGroups,commandToken,alreadyApplied,markApplied,prune5 } from './transaction5.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto',...infinityCommands]);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto','world',...infinityCommands]);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin,'backupinfinity']);
 export function parseExtra(text, owner) {
     text=String(text||'').trim();
@@ -351,6 +352,19 @@ export function makeFeatures() {
     const wrapped=input=>execute(input,input.command.name,()=>handle(input),readOnlyMedia.has(input.command.name));
     wrapped.chessMove=input=>execute({...input,shorthand:true},'xadrez',()=>handle.chessMove(input));
     wrapped.activity=input=>execute({...input,shorthand:true},input.command.name,()=>handle.activity(input));
+    wrapped.world=({jid,actor},command=null)=>groupSerial(jid,async()=>{
+        const data=await readGroupRaw(jid),{state,s}=data,id=hash(s.key,jid+':'+actor);
+        if(!state.players[id]||!await categoryAllowed(state,'economia','membro')||!commandPermitted(state,'world','membro'))return null;
+        if(!command)return {view:worldView(state,id)};
+        if(!validWorldAction(command.name,command.arg)||!commandPermitted(state,command.name,'membro'))return {view:worldView(state,id),message:'Comando indisponível ou limitado pelo responsável.'};
+        if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return {view:worldView(state,id),message:'Aguarde antes de executar outro comando.'};
+        const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));
+        return context5.run({jid,data,token:null,before},async()=>{
+            const result=await infinityFeature({...command,state,id,owner:false});
+            if(result?.changed)await save(s,state);
+            return {view:worldView(state,id),message:typeof result?.text==='string'?result.text:'Comando concluído.'};
+        });
+    });
     wrapped.schedule=handle.schedule;wrapped.welcome=handle.welcome;
     return wrapped;
 }
