@@ -21,7 +21,7 @@ export function localReply(arg) {
 const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 export const winner = b => wins.some(a=>a.every(i=>b[i]==='X'))?'X':wins.some(a=>a.every(i=>b[i]==='O'))?'O':null;
 const boardText = b => [0,3,6].map(start=>b.slice(start,start+3).map((v,i)=>v==='X'?'❌':v==='O'?'⭕':String(start+i+1)).join(' │ ')).join('\n');
-const words = ['PLANETA','ESCOLA','CADERNO','FLORESTA','OCEANO','JANELA','FUTEBOL','AMIZADE','MUSICA'];
+const words = ['PLANETA','ESCOLA','CADERNO','FLORESTA','OCEANO','JANELA','FUTEBOL','AMIZADE','MUSICA','BIBLIOTECA','GIRASSOL','HORIZONTE','CHOCOLATE','ABACAXI','BORBOLETA','GEOLOGIA','TELESCOPIO','CACHOEIRA','ORQUESTRA','MONTANHA','PRIMAVERA','LANTERNA','BICICLETA','AQUARELA','CIRCUITO','PLANICIE','CAMELO','JASMIM'];
 export function makeLocalGames(games = new Map()) {
     const get = (key) => {const g=games.get(key);if(g && g.expires>Date.now())return g;games.delete(key);return null;};
     const put = (key,g) => {games.set(key,{...g,expires:Date.now()+600000});if(games.size>200)games.delete(games.keys().next().value);};
@@ -29,7 +29,8 @@ export function makeLocalGames(games = new Map()) {
         if(!actor)return '🌸 Participante não identificado.';
         const key=jid+':'+actor+':'+name;
         if(name==='velha'){
-            if(!arg || arg==='novo'){const b=Array(9).fill('');put(key,{b});return '🎮 Jogo da velha — você é X.\n'+boardText(b)+'\n:velha 1 até 9.';}
+            if(!arg||arg==='mesa'){const old=get(key);if(old)return '🎮 Jogo da velha — sua vez.\n'+boardText(old.b);if(arg==='mesa')return 'Use :velha novo.';}
+            if(!arg || /^novo(?: (facil|medio|dificil))?$/.test(arg)){const b=Array(9).fill('');put(key,{b,level:arg.split(' ')[1]||'medio'});return '🎮 Jogo da velha — você é X.\n'+boardText(b)+'\n:velha 1 até 9.';}
             if(arg==='sair'){games.delete(key);return 'Jogo encerrado.';}
             const g=get(key);if(!g)return 'Use :velha para começar.';
             if(!/^[1-9]$/.test(arg)||g.b[Number(arg)-1])return 'Escolha uma casa livre de 1 a 9.';
@@ -37,16 +38,18 @@ export function makeLocalGames(games = new Map()) {
             if(winner(b)==='X'){games.delete(key);return boardText(b)+'\nVocê venceu!';}
             const free=b.map((v,i)=>v? -1:i).filter(i=>i>=0);
             if(!free.length){games.delete(key);return boardText(b)+'\nEmpate!';}
-            b[free[randomInt(free.length)]]='O';
+            const canWin=side=>free.find(i=>{const trial=b.slice();trial[i]=side;return winner(trial)===side;});const best=g.level==='facil'?undefined:canWin('O')??canWin('X')??(g.level==='dificil'&&!b[4]?4:undefined);b[best??free[randomInt(free.length)]]='O';
             if(winner(b)==='O'||b.every(Boolean)){games.delete(key);return boardText(b)+(winner(b)?'\nÍris venceu!':'\nEmpate!');}
-            put(key,{b});return boardText(b)+'\nSua vez!';
+            put(key,{b,level:g.level||'medio'});return boardText(b)+'\nSua vez!';
         }
         if(name==='forca'){
+            if(!arg||arg==='mesa'){const old=get(key);if(old)return [...old.word].map(l=>old.used.includes(l)?l:'_').join(' ')+'\nErros: '+old.errors+'/6 | Letras: '+old.used.join(', ');if(arg==='mesa')return 'Use :forca novo.';}
             if(!arg || arg==='novo'){const word=words[randomInt(words.length)];put(key,{word,used:[],errors:0});return '🔤 Adivinhe a palavra: '+Array(word.length).fill('_').join(' ')+'\nUse :forca letra. Você tem 6 tentativas erradas.';}
             if(arg==='sair'){games.delete(key);return 'Jogo encerrado.';}
             const g=get(key);if(!g)return 'Use :forca para começar.';
             const letter=normalize(arg).toUpperCase();
-            if(!/^[A-Z]$/.test(letter))return 'Envie apenas uma letra.';
+            if(/^[A-Z]{2,20}$/.test(letter)){if(letter===g.word){games.delete(key);return 'Você acertou! Palavra: '+g.word;}g.words??=[];if(g.words.includes(letter))return 'Palavra já tentada.';g.words.push(letter);g.errors++;if(g.errors>=6){games.delete(key);return 'Fim de jogo. Palavra: '+g.word;}put(key,g);return 'Palavra incorreta. Erros: '+g.errors+'/6. '+[...g.word].map(l=>g.used.includes(l)?l:'_').join(' ');}
+            if(!/^[A-Z]$/.test(letter))return 'Envie uma letra ou uma palavra inteira.';
             if(g.used.includes(letter))return 'Letra já usada.';
             g.used.push(letter);if(!g.word.includes(letter))g.errors++;
             const shown=[...g.word].map(l=>g.used.includes(l)?l:'_');
