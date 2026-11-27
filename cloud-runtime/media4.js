@@ -39,7 +39,7 @@ export async function premiumMenu(category='',theme='iris',fallback=''){
     category=String(category||'').toLowerCase();if(category==='fun'||category==='brincadeiras')category='diversao';
     const [bg,panel,accent]=groupThemes[theme]||groupThemes.iris;
     const title=category?'ÍRIS • '+category.toUpperCase():'ÍRIS CLOUD 4.0';
-    const lines=category?(sections[category]||['Categorias: '+Object.keys(sections).join(', ')]):[['GERAL',' :menu geral'],['JOGOS',' :menu jogos'],['ECONOMIA',' :menu economia'],['ESTÚDIO',' :menu midia'],['ÍRIS FUN',' :menu diversao'],['ADMINISTRAÇÃO',' :menu admin']].map(x=>x.join(' — '));
+    const lines=category?((Object.hasOwn(sections,category)?sections[category]:null)||['Categorias: '+Object.keys(sections).join(', ')]):[['GERAL',' :menu geral'],['JOGOS',' :menu jogos'],['ECONOMIA',' :menu economia'],['ESTÚDIO',' :menu midia'],['ÍRIS FUN',' :menu diversao'],['ADMINISTRAÇÃO',' :menu admin']].map(x=>x.join(' — '));
     const h=145+lines.length*60;
     const body=[r(0,0,700,h,bg),r(18,18,664,76,panel),txt(350,65,title,32,accent,true)];
     lines.forEach((line,i)=>{const y=110+60*i;body.push(r(20,y,660,50,panel),txt(36,y+33,line,20));});
@@ -47,7 +47,7 @@ export async function premiumMenu(category='',theme='iris',fallback=''){
     return {image:await sharp(svg(700,h,body.join(''))).png().toBuffer(),caption:fallback||'Íris Cloud 4.0 • '+(category||'menu principal')+'\n:menutexto para todos os comandos.'};
 }
 export async function helpCard(arg,theme){
-    const key=String(arg).replace(/^:/,'').toLowerCase(),help=helps[key];if(!help)return 'Cartões disponíveis: '+Object.keys(helps).join(', ')+'. Use :ajuda para os demais comandos.';
+    const key=String(arg).replace(/^:/,'').toLowerCase(),help=Object.hasOwn(helps,key)?helps[key]:null;if(!help)return 'Cartões disponíveis: '+Object.keys(helps).join(', ')+'. Use :ajuda para os demais comandos.';
     const words=help.split(' '),lines=[''];for(const w of words){if((lines.at(-1)+' '+w).length>52)lines.push(w);else lines[lines.length-1]+=(lines.at(-1)?' ':'')+w;}
     const [bg,panel,accent]=groupThemes[theme]||groupThemes.iris;const h=120+35*lines.length;
     const body=[r(0,0,700,h,bg),r(20,20,660,60,panel),txt(350,60,':'+key,30,accent,true),...lines.map((l,i)=>txt(28,110+i*35,l,20))];
