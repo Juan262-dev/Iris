@@ -12,8 +12,8 @@ for(const a of regions)for(const b of regions){const path=route(a.id,b.id);asser
 assert.deepEqual(route(0,9),[]);assert.deepEqual(route(1,99),[]);
 const a='a'.repeat(64),b='b'.repeat(64),state={players:{[a]:{xp:0,coins:7},[b]:{xp:0,coins:9}},custom:{old:'preserved'}};
 assert.equal(position(state.players[a]),1);
-assert.equal(parseExtra(':viajarworld 9',false).name,'viajarworld');
-assert.match(menu('infinity'),/:viajarworld/);
+assert.equal(parseExtra(':viajarworld 9',false).name,'jogos');
+assert.doesNotMatch(menu('infinity'),/:viajarworld/);
 assert.equal(validWorldAction('viajarworld','9'),true);assert.equal(validWorldAction('viajarworld','99'),false);
 const run=(name,arg,id=a)=>infinityFeature({name,arg,state,id});
 assert.equal((await run('viajarworld','9')).changed,true);
