@@ -10,7 +10,7 @@ import {parseExtra} from './features.js';
 import {makeWorldHttp} from './world-web.js';
 assert.equal(allRegions.length,18);assert.equal(adventureAreas.flat().length,54);
 for(const a of allRegions)for(const b of allRegions){const p=route(a.id,b.id);assert.equal(p[0],a.id);assert.equal(p.at(-1),b.id);for(let i=1;i<p.length;i++)assert.ok(allRoads.some(([x,y])=>x===p[i-1]&&y===p[i]||y===p[i-1]&&x===p[i]));}
-assert.equal(validWorldAction('viajarworld','18'),true);assert.equal(validWorldAction('viajarworld','19'),false);assert.equal(parseExtra(':aventuraworld classe mago',false).name,'aventuraworld');assert.equal(validAdventureArg('troca aceitar __proto__'),false);
+assert.equal(validWorldAction('viajarworld','18'),true);assert.equal(validWorldAction('viajarworld','19'),false);assert.equal(parseExtra(':aventuraworld classe mago',false).name,'jogos');assert.equal(validAdventureArg('troca aceitar __proto__'),false);
 const a='a'.repeat(64),b='b'.repeat(64),state={players:{[a]:{xp:0,coins:200},[b]:{xp:0,coins:50}},custom:{legacy:'intact'},infinity:{buildings:{1:1,4:2},guilds:{grupo:{ids:[a,b],name:'Grupo'}},games:{},project:{ids:[]},festival:{},tournament:{scores:{}}}};
 let now=Date.UTC(2026,10,27,9);
 const run=(arg,id=a)=>adventureFeature({state,id,arg,now});
