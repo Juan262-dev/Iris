@@ -48,3 +48,25 @@ export function gameHub(arg='',state={},id=null){
  if(tokens[0]==='ranking'&&Object.hasOwn(catalog,k)){const rows=Object.keys(state.players||{}).map(key=>gameStats(state,key)[k]).filter(x=>x&&(x.w+x.c+x.d+x.l+x.points)>0).sort((a,b)=>b.w-a.w||b.points-a.points||b.c-a.c).slice(0,10);return '🏆 Ranking anônimo • '+catalog[k][0]+'\n'+(rows.map((x,i)=>(i+1)+'º • '+x.w+' vitórias / '+x.points+' pts / '+x.c+' concluídas').join('\n')||'Sem registros.');}
  return gameGuide(v)||'Use :jogos lista, :jogos solo, :jogos grupo, :jogos meus ou :jogos stop.';
 }
+
+const catalogSections={
+ todos:Object.keys(catalog),
+ solo:Object.keys(catalog).filter(k=>['solo','ambos'].includes(catalog[k][1])),
+ grupo:Object.keys(catalog).filter(k=>['grupo','ambos'].includes(catalog[k][1])),
+ tabuleiro:['uno','unobot','domino','xadrez','damas','naval','velha','velhadupla','ludo','imobiliario','trilha'],
+ logica:['memoria','sudoku','termo','2048','forca','numero','cruzadas','encoded','inverse','adivinha'],
+ estudos:['stop','quiz','quizmulti','batalhaconhecimento','bingoeducativo','detetive','tesouro'],
+ equipe:['coop','expedicao','reliquia','campeonato','torneiouno'],
+ rapidos:['ppt','dado','moeda']
+};
+export function gameHubPage(arg=''){
+ const v=String(arg).trim().toLowerCase(),parts=v.split(/\s+/),mode=!v||parts[0]==='lista'?'todos':parts[0];
+ if(!Object.hasOwn(catalogSections,mode)||parts.length>2)return null;
+ const requested=parts[1]||'1';if(!/^[1-9]\d?$/.test(requested))return null;
+ const all=catalogSections[mode],page=Number(requested),size=8,pages=Math.ceil(all.length/size);
+ if(page>pages)return {error:'Página inexistente. Use :jogos '+(mode==='todos'?'lista':mode)+' 1.'};
+ const prefix=':jogos '+(mode==='todos'?'lista':mode);
+ const rows=all.slice((page-1)*size,page*size).map(k=>({key:k,title:catalog[k][0],mode:catalog[k][1],command:':'+k+(catalog[k][2]?' '+catalog[k][2]:'')}));
+ const caption='🎮 *Íris Game Center* — '+mode+' • '+page+'/'+pages+'\n'+rows.map(r=>'• '+r.title+' — '+r.command).join('\n')+'\n\nCategorias: :jogos tabuleiro | logica | estudos | equipe | rapidos | solo | grupo\nGuia: :jogos dominó (ou :jogos domino)\n'+(page>1?'Anterior: '+prefix+' '+(page-1)+'\n':'')+(page<pages?'Próxima: '+prefix+' '+(page+1)+'\n':'')+'Estatísticas: :jogos meus | ranking stop\nLista em texto: :jogos texto';
+ return {mode,page,pages,total:all.length,rows,caption};
+}
