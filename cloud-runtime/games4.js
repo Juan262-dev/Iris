@@ -136,7 +136,7 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(arg==='novo'){if(g)return out('Já existe uma caça.');g=db[name]={ids:[id],index:0,expires:now+day};return out('Caça ao tesouro virtual: '+clues[0][0]+' :tesouro resposta palavra.',true);}
         if(!g)return out('Use :tesouro novo.');
         if(!g.ids.includes(id))return out('Já existe uma caça de outro jogador.');
-        if(arg.startsWith('resposta ')&&arg.slice(9)===clues[g.index][1]){award(state,id,name);g.index++;if(g.index===clues.length){delete db[name];return out('Tesouro simbólico descoberto!',true);}return out('Próxima pista: '+clues[g.index][0],true);}
+        if((arg.startsWith('resposta ')?arg.slice(9):arg).normalize('NFD').replace(/\p{M}/gu,'')===clues[g.index][1]){award(state,id,name);g.index++;if(g.index===clues.length){delete db[name];return out('Tesouro simbólico descoberto!',true);}return out('Próxima pista: '+clues[g.index][0],true);}
         return out(clues[g.index][0]+' — :tesouro resposta palavra.');
     }
     // Timed educational rounds; no wagers, random prizes, or real-world rewards.
@@ -148,7 +148,7 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
     if(arg==='placar')return out(g.started&&Object.keys(g.answered).length?'Placar disponível ao fim da rodada.':score());
     if(arg==='iniciar'){if(g.ids[0]!==id||g.started)return out('Somente o criador inicia.');g.started=true;g.expires=now+day;return out(card(questions[0])+'\n:'+name+' resposta 1',true);}
     if(!g.started)return out('Aguardando início.');
-    const m=/^resposta ([123])$/.exec(arg);
+    const m=/^(?:resposta )?([123])$/.exec(arg);
     if(m){if(!g.ids.includes(id)||Object.hasOwn(g.answered,id))return out('Inscrição necessária; uma resposta por rodada.');const correct=Number(m[1])-1===questions[g.round][2];g.answered[id]=true;if(correct){g.scores[id]++;g.marks[id].push(g.round);award(state,id,name);if(isBingo&&g.marks[id].length===3){const result='Bingo educativo concluído por '+label(id)+'!\n'+score();delete db[name];return out(result,true);}}if(g.ids.every(k=>g.answered[k])){g.round++;g.answered={};if(g.round===questions.length){const result='Placar final:\n'+score();delete db[name];return out(result,true);}return out('Rodada concluída.\n'+card(questions[g.round]),true);}return out('Resposta registrada. O resultado aparece no placar ao fim da rodada.',true);}
     if(arg==='proxima'&&g.ids[0]===id){g.round++;g.answered={};if(g.round===questions.length){const result=score();delete db[name];return out('Placar final:\n'+result,true);}return out(card(questions[g.round]),true);}
     return out('Rodada '+(g.round+1)+'/'+questions.length+' • '+Object.keys(g.answered).length+'/'+g.ids.length+' respostas\n'+card(questions[g.round])+'\n:'+name+' resposta 1 | placar');
