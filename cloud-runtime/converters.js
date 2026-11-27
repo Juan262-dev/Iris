@@ -43,7 +43,7 @@ export async function convertMedia(msg,b,name){
     try{
         if(name==='imagem'){
             const s=selected?.message?.stickerMessage;
-            if(!s)return '🌸 Responda a uma figurinha autorizada com !iris imagem.';
+            if(!s)return '🌸 Responda a uma figurinha autorizada com :imagem.';
             return await stickerToImage(await bytes(s,'sticker',b,500000));
         }
         const v=selected?.message?.videoMessage,a=selected?.message?.audioMessage;
@@ -52,6 +52,6 @@ export async function convertMedia(msg,b,name){
             const f=a.mimetype.startsWith('audio/ogg')?'ogg':a.mimetype==='audio/mpeg'?'mp3':'mov';
             return await toAudio(await bytes(a,'audio',b,15*MB),f,name==='voz');
         }
-        return '🌸 Responda a um MP4 ou áudio autorizado com !iris '+name+'. Até 15 MB; converte os primeiros 60 segundos.';
+        return '🌸 Responda a um MP4 ou áudio autorizado com :'+name+'. Até 15 MB; converte os primeiros 60 segundos.';
     }catch{return '🌸 Não consegui converter a mídia. Use um arquivo válido de até 15 MB com áudio.';}
 }
