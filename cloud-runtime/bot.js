@@ -1,4 +1,5 @@
-import {stopForm,gameNotice} from './gameVisual.js';
+import {stopForm,gameNotice,visualGameResponse} from './gameVisual.js';
+import {gameCatalog} from './gameHub.js';
 import {makeStopTickets,formatStopAnswers,stopPrompt,stopSelfRoutes,stopSelfRecipient,stopPrivateCandidate} from './stopPrivate.js';
 // Experimental headless connection test, not the full Iris command engine.
 import * as baileys from '@whiskeysockets/baileys';
@@ -296,7 +297,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 if(!closed&&response){
                     try{
                         if(action==='off')await sock.sendMessage(jid,{text:response},{quoted:msg});
-                        else {if(extra?.name==='stop'&&typeof response==='string'&&!/^📩|^Não consegui|^STOP privado/.test(response))response=await gameNotice('STOP',response).catch(()=>response);await deliver(jid,response,msg);}
+                        else {const game=extra?.name||(shortMove?'xadrez':activity?.name);const key=game==='resposta'?'quiz':game;const title=key==='jogos'?'Central de jogos':Object.hasOwn(gameCatalog,key||'')?gameCatalog[key][0]:null;if(title&&typeof response==='string')response=await visualGameResponse(key,title,response).catch(()=>response);await deliver(jid,response,msg);}
                     }catch{incrementRuntime('errors');console.error('Iris: individual response delivery failed');}
                 }
                 incrementRuntime('processed');if(Date.now()-commandStarted>10000)incrementRuntime('slow');
