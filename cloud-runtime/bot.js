@@ -188,7 +188,7 @@ export async function startHeadlessBot(restartCount = 0) {
                 const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
                 const plain = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
                 const shortMove = !action && !extra && chats.has(jid) && jid.endsWith('@g.us') && isChessMove(plain);
-                const activity=!action&&!extra&&!shortMove&&chats.has(jid)&&jid.endsWith('@g.us')?(shortActivity(plain)||megaShort(plain)):null;
+                const activity=!action&&!extra&&chats.has(jid)&&jid.endsWith('@g.us')?(shortActivity(plain)||megaShort(plain)):null;
                 if (!action && !extra && !shortMove && !activity) continue;
                 seen.add(jid + ':' + id);
                 if (seen.size > 500) seen.delete(seen.values().next().value);
@@ -202,7 +202,7 @@ export async function startHeadlessBot(restartCount = 0) {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (shortMove) {
-                    try { response=await features.chessMove({jid,actor,arg:plain}); }
+                    try { response=await features.chessMove({jid,actor,arg:plain}); if(!response&&activity?.name==='uno')response=await features.activity({jid,actor,command:activity}); }
                     catch { console.error('Iris: chess shorthand processing failed'); }
                 } else if (activity) {
                     try{response=await features.activity({jid,actor,command:activity});}
