@@ -19,15 +19,15 @@ const txt=(x,y,s,size=24,color='#fff',center=false)=>'<text x="'+x+'" y="'+y+'" 
 const r=(x,y,w,h,fill)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="14" fill="'+fill+'"/>';
 const sections={
  geral:[':ping • :status • :diagnostico',':menutexto • :versao • :ajuda',':ajudacartao comando'],
- jogos:[':domino novo • entrar • pv • iniciar',':unobot novo • pos 1 • mao',':torneiouno novo • entrar • iniciar',':2048 novo • cima • direita',':cruzadas novo • :quizmulti novo',':uno • :xadrez • :damas • :naval',':memoria • :stop • :forca • :quiz'],
- economia:[':temporada • :rankequipes',':missaosemanal participar • resgatar',':lojatema • :comprartema oceano',':empresa • :evoluir empresa',':perfil • :perfilvisual • :conquistavisual',':banco • :saldo • :diario • :loja'],
- midia:[':pacotefig criar nome','Imagem na legenda: :figtexto frase',':qrcode texto simples • :efeitoanimado','GIF como documento: :gifvideo',':s • :fig • :som • :pdf • :tts'],
- diversao:[':menufun • :fun on • :fun off',':tesouro novo • :bingoeducativo novo',':batalhaconhecimento novo',':eventotema participar',':abraco • :elogio • :dupla • :adivinha'],
- admin:[':configgrupo • :temagrupo oceano',':permissao jogos admin',':avisoregistrar regras • :avisohistorico',':salvarconfig • :restaurarconfig confirmar',':regras • :backup • :agenda']
+ jogos:[':domino novo • entrar • pv • iniciar',':unobot novo • pos 1 • mao',':torneiouno novo • entrar • iniciar',':2048 novo • cima • direita',':ludo • :sudoku • :termo • :historicopartidas',':cruzadas novo • :quizmulti novo',':uno • :xadrez • :damas • :naval',':memoria • :stop • :forca • :quiz'],
+ economia:[':temporada • :rankequipes',':missaosemanal participar • resgatar',':lojatema • :comprartema oceano',':empresa • :evoluir empresa',':perfil • :perfilvisual • :conquistavisual',':banco • :saldo • :diario • :loja',':cidade • :imovel • :museu • :missaoequipe',':album • :reputacao • :evolucao • :colecao'],
+ midia:[':pacotefig criar nome','Imagem na legenda: :figtexto frase',':qrcode texto simples • :efeitoanimado','GIF como documento: :gifvideo',':s • :fig • :som • :pdf • :tts',':animtexto • :fundopro • :colagem',':formatoimagem • :videofiltro • :audioefeito'],
+ diversao:[':menufun • :fun on • :fun off',':tesouro novo • :bingoeducativo novo',':batalhaconhecimento novo',':eventotema participar',':abraco • :elogio • :dupla • :adivinha',':gincana • :festival • :historiainterativa'],
+ admin:[':configgrupo • :temagrupo oceano',':permissao jogos admin',':avisoregistrar regras • :avisohistorico',':salvarconfig • :restaurarconfig confirmar',':regras • :backup • :agenda',':painel • :comandopermissao • :auditoria']
 };
 const helps={
- domino:'Dominó de dois jogadores. Cada um confirma :domino pv. O criador inicia. :domino jogar 1-2 esquerda ou direita. :domino comprar quando não há peça válida.',
- unobot:'UNO numérico contra a Íris. :unobot novo autoriza o envio da mão no privado. :unobot pos 1, comprar, mao ou sair.',
+ domino:'Dominó de 2 a 4 jogadores. Cada um confirma :domino pv. O criador inicia. :domino jogar 1-2 esquerda ou direita. :domino comprar quando não há peça válida.',
+ unobot:'UNO contra a Íris com cartas especiais. :unobot novo autoriza o envio da mão no privado. :unobot pos 1, comprar, mao ou sair.',
  torneiouno:'Torneio UNO com 2, 4 ou 8 inscritos. Responsável inicia; cada dupla confirma :uno pv. Avança pelo resultado real.',
  '2048':'Use :2048 novo, depois cima, baixo, esquerda ou direita. Junte números iguais até chegar a 2048.',
  pacotefig:'Crie com :pacotefig criar nome. Envie imagem própria com :pacotefig adicionar na legenda. :pacotefig pegar 1, listar, apagar.',
@@ -38,13 +38,13 @@ const helps={
 export async function premiumMenu(category='',theme='iris',fallback=''){
     category=String(category||'').toLowerCase();if(category==='fun'||category==='brincadeiras')category='diversao';
     const [bg,panel,accent]=groupThemes[theme]||groupThemes.iris;
-    const title=category?'ÍRIS • '+category.toUpperCase():'ÍRIS CLOUD 4.0';
+    const title=category?'ÍRIS • '+category.toUpperCase():'ÍRIS CLOUD 5.0';
     const lines=category?((Object.hasOwn(sections,category)?sections[category]:null)||['Categorias: '+Object.keys(sections).join(', ')]):[['GERAL',' :menu geral'],['JOGOS',' :menu jogos'],['ECONOMIA',' :menu economia'],['ESTÚDIO',' :menu midia'],['ÍRIS FUN',' :menu diversao'],['ADMINISTRAÇÃO',' :menu admin']].map(x=>x.join(' — '));
     const h=145+lines.length*60;
     const body=[r(0,0,700,h,bg),r(18,18,664,76,panel),txt(350,65,title,32,accent,true)];
     lines.forEach((line,i)=>{const y=110+60*i;body.push(r(20,y,660,50,panel),txt(36,y+33,line,20));});
     body.push(txt(350,h-14,'Prefixo : • :menutexto para a lista completa',15,accent,true));
-    return {image:await sharp(svg(700,h,body.join(''))).png().toBuffer(),caption:fallback||'Íris Cloud 4.0 • '+(category||'menu principal')+'\n:menutexto para todos os comandos.'};
+    return {image:await sharp(svg(700,h,body.join(''))).png().toBuffer(),caption:fallback||'Íris Cloud 5.0 • '+(category||'menu principal')+'\n:menutexto para todos os comandos.'};
 }
 export async function helpCard(arg,theme){
     const key=String(arg).replace(/^:/,'').toLowerCase(),help=Object.hasOwn(helps,key)?helps[key]:null;if(!help)return 'Cartões disponíveis: '+Object.keys(helps).join(', ')+'. Use :ajuda para os demais comandos.';
