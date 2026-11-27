@@ -19,8 +19,8 @@ for(const level of ['facil','medio','dificil']){const q=makeSudoku(level,pick);a
 const g=(name,arg='',id=a,extra={})=>game5({name,arg,state,id,now,choose:pick,...extra});
 assert.ok((await g('sudoku','novo facil')).text.image);
 let su=state.games5.sudoku[a];const cell=su.initial.findIndex(x=>!x);
-assert.equal((await g('sudoku','jogar '+(Math.floor(cell/9)+1)+' '+(cell%9+1)+' '+su.solution[cell])).changed,true);
-assert.ok((await g('termo','novo')).text.image);assert.equal((await g('termo','tentar amigo')).changed,true);assert.equal(state.players[a].stats5.termo.wins,1);
+assert.equal((await g('sudoku',(Math.floor(cell/9)+1)+' '+(cell%9+1)+' '+su.solution[cell])).changed,true);
+assert.ok((await g('termo','novo')).text.image);assert.equal((await g('termo','amigo')).changed,true);assert.equal(state.players[a].stats5.termo.wins,1);
 assert.match((await g('historicopartidas')).text,/termo/);
 await g('ludo','novo');await g('ludo','entrar',b);assert.ok((await g('ludo','iniciar')).text.image);
 assert.equal((await g('ludo','d',a,{choose:n=>n-1})).changed,true);
