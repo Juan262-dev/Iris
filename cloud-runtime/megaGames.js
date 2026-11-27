@@ -1,3 +1,4 @@
+import { recordGame,displayName } from './profileCard.js';
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
 import { unoPublic,unoPrivate,unoRecipients,validUnoRoute } from './unoVisual.js';
@@ -35,7 +36,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
     if(name==='uno'){
         arg=String(arg).trim().toLowerCase();
         const stats=m.unoStats??={};
-        if(arg==='ranking')return out('🏆 Ranking UNO\n'+(Object.entries(stats).sort((a,b)=>b[1].wins-a[1].wins).slice(0,10).map(([k,v])=>(state.social3?.names?.[k]||label(k))+': '+v.wins+' vitórias, '+v.losses+' derrotas').join('\n')||'Sem resultados.'));
+        if(arg==='ranking')return out('🏆 Ranking UNO\n'+(Object.entries(stats).sort((a,b)=>b[1].wins-a[1].wins).slice(0,10).map(([k,v])=>(state.social3?.names?.[k]||(state.players[k]?.card?.public===true?displayName(state,k):label(k)))+': '+v.wins+' vitórias, '+v.losses+' derrotas').join('\n')||'Sem resultados.'));
         if(arg==='stats')return out('UNO: '+(stats[id]?.wins||0)+' vitórias, '+(stats[id]?.losses||0)+' derrotas.');
         if(arg==='apagarranking'){delete stats[id];return out('Suas estatísticas UNO foram removidas.',true);}
         let g=m.uno;if(g&&g.expires<=now){delete m.uno;g=null;}
@@ -52,7 +53,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         }
         if(!g.ids.includes(id))return out(activeOnly?null:'Você não participa desta mesa.');
         g.routes??={};
-        g.names=Object.fromEntries(g.ids.map(k=>[k,state.social3?.names?.[k]||label(k)]));
+        g.names=Object.fromEntries(g.ids.map(k=>[k,state.social3?.names?.[k]||(state.players[k]?.card?.public===true?displayName(state,k):label(k))]));
         const ready=()=>g.ids.every(k=>validUnoRoute(g.routes[k]))&&new Set(g.ids.map(k=>g.routes[k])).size===g.ids.length;
         const pack=async(ids,notice='',publicBoard=true)=>{
             const privateHands=[];
@@ -131,7 +132,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         const target=g.ids[1-g.turn];if(g.shots[target][i])return out('Casa já escolhida.');
         const hit=g.boards[target][i];g.shots[target][i]=hit?'hit':'miss';
         const won=g.boards[target].every((v,j)=>!v||g.shots[target][j]==='hit');
-        if(!won){g.turn=1-g.turn;g.expires=now+86400000;}else delete m.naval;
+        if(!won){g.turn=1-g.turn;g.expires=now+86400000;}else {for(const k of g.ids)recordGame(state,'naval',k,k===id?'w':'l');delete m.naval;}
         return out({image:await navalImage(g),caption:(hit?'Acertou!':'Água!')+'\n'+(won?label(id)+' venceu!':'Vez de '+label(g.ids[g.turn]))},true);
     }
     if(name==='rpg'){
@@ -146,7 +147,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         if(arg==='explorar'){
             const day=new Date(now).toISOString().slice(0,10);if(r.day===day)return out('Exploração diária concluída.');
             r.day=day;r.xp+=5;const item={vila:'flor',bosque:'semente',arquivo:'pergaminho'}[r.place];r.bag[item]=(r.bag[item]||0)+1;p.xp+=2;p.coins=Math.min(1000000,p.coins+8);
-            return out('🌟 Encontrou '+item+'! +5 XP RPG, +2 XP e +8 moedas virtuais.',true);
+            recordGame(state,'rpg',id,'c');return out('🌟 Encontrou '+item+'! +5 XP RPG, +2 XP e +8 moedas virtuais.',true);
         }
         return out('🗺️ '+classes[r.class]+' | '+maps[r.place]+' | Nível '+(1+Math.floor(r.xp/15))+' | Inventário: '+(Object.entries(r.bag).map(([k,v])=>k+': '+v).join(', ')||'vazio'));
     }
@@ -171,7 +172,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         const code=arg.slice(10);const candidates=t.round.flat().filter(k=>k.startsWith(code));
         if(!t.started||!/^[a-f0-9]{6}$/.test(code)||candidates.length!==1)return out('Informe o código do vencedor de uma partida concluída.');
         const k=candidates[0],i=t.round.findIndex(pair=>pair.includes(k));t.round.splice(i,1);t.winners.push(k);
-        if(!t.round.length){if(t.winners.length===1){delete m.tournament;return out('🏆 Campeão: '+label(k)+'! Troféu simbólico.',true);}for(let j=0;j<t.winners.length;j+=2)t.round.push(t.winners.slice(j,j+2));t.winners=[];}
+        if(!t.round.length){if(t.winners.length===1){recordGame(state,'campeonato',k,'w');delete m.tournament;return out('🏆 Campeão: '+label(k)+'! Troféu simbólico.',true);}for(let j=0;j<t.winners.length;j+=2)t.round.push(t.winners.slice(j,j+2));t.winners=[];}
         return out('Resultado informado pelo organizador. Use :campeonato para ver as chaves.',true);
     }
     if(arg==='cancelar'&&owner){delete m.tournament;return out('Campeonato encerrado.',true);}
