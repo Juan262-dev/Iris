@@ -12,10 +12,11 @@ import { studioNames } from './studio.js';
 import { game3,games3 } from './games3.js';
 import { socialFeature,social3,removeSocial } from './social3.js';
 import { media3Names } from './media3.js';
+import { originalMedia,originalGames,originalAdmin,puzzle,makeOriginalAdmin } from './originalCompat.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names]);
-const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup']);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin]);
+const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin]);
 export function parseExtra(text, owner) {
     text=String(text||'').trim();
     const match = /^:([a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(text);
@@ -40,11 +41,11 @@ const validName = v => /^[a-z0-9_-]{1,20}$/i.test(v);
 export function menu(category='') {
     const sections = {
         geral:'📋 *GERAL*\n:ping — conexão\n:status — situação\n:grupo — participantes\n:regras — regras\n:diagnostico — estado do bot\n:versao | menuimagem | ajuda\nAtalhos: :s, :ping, :menu, :fig',
-        midia:'🖼️ *MÍDIA*\n:s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n:texto frase — figurinha de texto\n:s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n:slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n:som — MP4 com áudio (primeiros 10 s)\n:som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n:meme topo | rodapé — legenda de foto\n:imagem — responda a figurinha\n:audio | voz — responda a vídeo ou áudio\n:filtro cinza | sepia | nitido | invertido\n:semfundo | transparente #ffffff — fundo uniforme\n:autor nome — metadados da figurinha\n:trecho 30 — até 20 s a partir de 30 s\n:gif | comprimir — MP4\n:borda #ffffff | :pdf | :montagem — imagem\n:textanim frase — texto animado',
-        jogos:'🎮 *JOGOS*\n:velha | forca | quiz\n:resposta 1, 2 ou 3\n:numero — adivinhe o número\n:ppt pedra — pedra, papel ou tesoura\n:dado | moeda\n:xadrez novo medio — jogar contra o bot\n:xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n:xadrez ajuda — regras, temas e ranking\n:velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n:aventura novo — missão de exploração\n:quiz ciencia | geografia | geral\n:uno novo | entrar | pv | iniciar | mao — cartas no privado\n:naval desafio | aceitar — tiro a1\n:rpg classe explorador | mapa | explorar\n:campeonato entrar | ver\n:uno ranking | stats | gritar\n:damas desafio | aceitar — dama b3 a4\n:memoria novo | entrar — par 2 7\n:stop novo | entrar | resposta\n:detetive novo | entrar\n:coop novo | entrar | ajudar',
+        midia:'🖼️ *MÍDIA*\n:s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n:texto frase — figurinha de texto\n:s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n:slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n:som — MP4 com áudio (primeiros 10 s)\n:som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n:meme topo | rodapé — legenda de foto\n:imagem — responda a figurinha\n:audio | voz — responda a vídeo ou áudio\n:filtro cinza | sepia | nitido | invertido\n:semfundo | transparente #ffffff — fundo uniforme\n:autor nome — metadados da figurinha\n:trecho 30 — até 20 s a partir de 30 s\n:gif | comprimir — MP4\n:borda #ffffff | :pdf | :montagem — imagem\n:textanim frase — texto animado\n:renomear pacote | autor — figurinha\n:tts frase — voz sintetizada local\n:play piano | :youtube astronomia — pesquisa por tema\n:nasa lua | :pesquisarimagem girassol',
+        jogos:'🎮 *JOGOS*\n:velha | forca | quiz\n:resposta 1, 2 ou 3\n:numero — adivinhe o número\n:ppt pedra — pedra, papel ou tesoura\n:dado | moeda\n:xadrez novo medio — jogar contra o bot\n:xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n:xadrez ajuda — regras, temas e ranking\n:velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n:aventura novo — missão de exploração\n:quiz ciencia | geografia | geral\n:uno novo | entrar | pv | iniciar | mao — cartas no privado\n:naval desafio | aceitar — tiro a1\n:rpg classe explorador | mapa | explorar\n:campeonato entrar | ver\n:uno ranking | stats | gritar\n:damas desafio | aceitar — dama b3 a4\n:memoria novo | entrar — par 2 7\n:stop novo | entrar | resposta\n:detetive novo | entrar\n:coop novo | entrar | ajudar\n:encoded novo | :inverse novo — palavras',
         diversao:'💬 *DIVERSÃO*\n:chat oi — diálogo local\n:piada | curiosidade\n:apelido nome | apagar\n:aniversario DD/MM | hoje | apagar',
         economia:'🏆 *ECONOMIA VIRTUAL*\n:perfil | saldo | diario | ranking\n:loja | comprar item | inventario\n:nivel | conquistas | sair\n:missoes | resgatar nome\n:banco | depositar 10 | sacar 10\n:transferir codigo 10\n:semanal | profissao | trabalhar | tarefadiaria\n:empresa | propriedade | evento participar\n:mercado | anunciar item preco | adquirir codigo\n:vitrine | mochila | perfilvisual\n:evoluir empresa | propriedade\n:equipe criar nome | entrar nome | sair\n:troca propor codigo item item | aceitar codigo\n:eventoespecial participar',
-        admin:'🛡️ *RESPONSÁVEL*\n:on | off | abrir | fechar\n:definirregras texto\n:criar nome texto | remover nome\n:comandos | usar nome\n:boasvindas on | off\n:mensagembemvindo texto\n:avisogrupo texto\n:enquete pergunta | opção 1 | opção 2\n:votar 1 | votos | encerrarenquete\n:agenda 08:00 22:00 | off\n:advertir codigo motivo | advertencias codigo\n:prefixo\n:backup | sugestoes\nTodos: :sugestao texto'
+        admin:'🛡️ *RESPONSÁVEL*\n:on | off | abrir | fechar\n:definirregras texto\n:criar nome texto | remover nome\n:comandos | usar nome\n:boasvindas on | off\n:mensagembemvindo texto\n:avisogrupo texto\n:enquete pergunta | opção 1 | opção 2\n:votar 1 | votos | encerrarenquete\n:agenda 08:00 22:00 | off\n:advertir codigo motivo | advertencias codigo\n:prefixo\n:backup | sugestoes\n:kick @participante | :promote @participante | :demote @participante\nConfirme a operação com o mesmo comando seguido de confirmar.\nTodos: :sugestao texto'
     };
     const key=category.trim().toLowerCase();
     const header='╭─ 🌸 *ÍRIS CLOUD*\n│ Legião Z • Cloud 3.0\n│ Sem IA externa\n╰──────────────';
@@ -54,6 +55,7 @@ export function menu(category='') {
 }
 export function makeFeatures() {
     const localGames = makeLocalGames();
+    const originalModeration=makeOriginalAdmin();
     const extras = makeExtras();
     const chess = makePersistentChess({readGroup,save});
     const welcomeCooldown = new Map();
@@ -72,12 +74,13 @@ export function makeFeatures() {
         await request(s, 'POST', { session_id:s.sessionId, item_type:'auth', item_id:'snapshot',
             encrypted_payload:seal(state,s), updated_at:new Date().toISOString() });
     }
-    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert, studio, unoRoute, advancedMedia }) {
+    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert, studio, unoRoute, advancedMedia, original }) {
         const { name, arg } = command;
         if (name === 'menu') return menu(arg);
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Comandos e respostas de jogos ativos.';
         if (name === 'diagnostico') { const d=runtimeStatus(); return '⚙️ Íris Cloud\nWhatsApp: '+d.whatsapp+'\nBanco: '+d.storage+'\nFila de mídia: '+d.media+'\nFila de comandos: '+d.commands+'\nProcessados: '+d.processed+' | Erros: '+d.errors+' | Lentos: '+d.slow+' | Descartados por limite: '+d.dropped+'\nMemória: '+Math.round(process.memoryUsage().rss/1048576)+' MB\nTempo online: '+Math.floor(process.uptime()/60)+' min'; }
+        if(originalAdmin.includes(name))return originalModeration({name,arg,jid,sock,msg,owner});
         if (name === 'chat') return localReply(arg);
         if (name === 'xadrez') return chess({jid,actor,arg});
         if (name === 'ia') return '🌸 IA externa desativada. Use :chat para diálogos locais.';
@@ -96,13 +99,13 @@ export function makeFeatures() {
             catch { return '🌸 Não foi possível alterar o grupo. Seu número precisa ser administrador.'; }
             return name === 'abrir' ? '🌸 Grupo aberto para mensagens.' : '🌸 Grupo restrito a administradores.';
         }
-        if (name === 's' || name === 'figurinha' || name === 'slonga' || name === 'som' || name === 'texto' || name === 'meme' || converterNames.includes(name) || studioNames.includes(name) || media3Names.includes(name)) {
+        if (name === 's' || name === 'figurinha' || name === 'slonga' || name === 'som' || name === 'texto' || name === 'meme' || converterNames.includes(name) || studioNames.includes(name) || media3Names.includes(name) || originalMedia.includes(name)) {
             const key = jid + ':' + actor;
             const now = Date.now();
             if (now - (cooldown.get(key) || 0) < 10000) return '🌸 Aguarde 10 segundos entre figurinhas.';
             cooldown.set(key,now);
             if (cooldown.size > 1000) cooldown.delete(cooldown.keys().next().value);
-            return name==='texto' ? await textSticker(arg) : name==='meme' ? await meme(msg,arg) : converterNames.includes(name) ? await convert(msg,name) : studioNames.includes(name) ? await studio(msg,name,arg) : media3Names.includes(name) ? await advancedMedia(msg,name,arg) : await sticker(msg,name,arg);
+            return name==='texto' ? await textSticker(arg) : name==='meme' ? await meme(msg,arg) : converterNames.includes(name) ? await convert(msg,name) : studioNames.includes(name) ? await studio(msg,name,arg) : media3Names.includes(name) ? await advancedMedia(msg,name,arg) : originalMedia.includes(name) ? await original(msg,name,arg) : await sticker(msg,name,arg);
         }
         if (name === 'quiz') {
             const old = quizzes.get(jid);
@@ -119,6 +122,9 @@ export function makeFeatures() {
         const {s,state} = await readGroup(jid);
         const id = hash(s.key, jid + ':' + actor);
         const player = state.players[id];
+        if(originalGames.includes(name)){
+            const out=puzzle({name,arg,state,id});if(out?.changed)await save(s,state);return out?.text??null;
+        }
         if(games3.includes(name)||social3.includes(name)){
             const out=await (games3.includes(name)?game3({name,arg,state,id}):socialFeature({name,arg,state,id}));
             if(out?.changed)await save(s,state);
