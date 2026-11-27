@@ -32,7 +32,7 @@ export async function stickerCommand(msg,baileys,name,arg=''){
     if(!selected)return '🌸 Envie ou responda a uma imagem, GIF ou vídeo autorizado. Mídia temporária e de visualização única não é aceita.';
     if(name==='som'||name==='slonga'){
         if(!selected.message.videoMessage)return '🌸 Responda a um vídeo MP4 ou envie-o com esse comando na legenda.';
-        if(name==='som'&&arg&&!['20','10'].includes(arg))return 'Use !iris som ou !iris som 20.';
+        if(name==='som'&&arg&&!['20','10'].includes(arg))return 'Use :som ou :som 20.';
         return makeVideoSticker(selected,baileys,{long:name==='slonga'||arg==='20',sound:name==='som'});
     }
     return selected.message.videoMessage?makeVideoSticker(selected,baileys):makeSticker(selected,baileys);
