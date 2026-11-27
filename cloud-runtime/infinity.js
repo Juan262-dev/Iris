@@ -1,10 +1,10 @@
 import sharp from 'sharp';
 import { randomInt } from 'node:crypto';
 export const infinityGames=['imobiliario','trilha','expedicao','reliquia'];
-export const infinityWorld=['mapainfinity','explorar','construir','oficina','npc','guilda','projetoinfinity','temporadainfinity','missãoinfinity','missaoinfinity','festivalinfinity','torneioestudo'];
+export const infinityWorld=['mapainfinity','explorar','construir','oficina','npc','guilda','projetoinfinity','temporadainfinity','missaoinfinity','festivalinfinity','torneioestudo'];
 export const infinityStudy=['estudar','simulado','flashcard','desafioestudo'];
 export const infinityMedia=['cartaoarte','fotoarte','figurarte','videoarte'];
-export const infinityCommands=[...infinityGames,...infinityWorld.filter(x=>x!=='missãoinfinity'),...infinityStudy,'passaporte','infinity','ajudainfinity','backupinfinity',...infinityMedia];
+export const infinityCommands=[...infinityGames,...infinityWorld,...infinityStudy,'passaporte','infinity','ajudainfinity','backupinfinity',...infinityMedia];
 const out=(text,changed=false)=>({text,changed}), day=86400000;
 const stamp=now=>new Date(now).toISOString().slice(0,10);
 const month=now=>stamp(now).slice(0,7);
@@ -41,6 +41,19 @@ async function mapImage(db){let body=txt(300,40,'INFINITY • CIDADE',28,'#d4b6f
 function profile(p){return p.infinity??={visits:0,collection:{},studyDone:0,studyRight:0,contributions:0,completed:0,season:{month:'',score:0}};}
 function credit(p,x,now,n=1){const s=x.season??={month:'',score:0};if(s.month!==month(now)){s.month=month(now);s.score=0;}s.score=clamp(s.score+n,100000);reward(p,n);}
 function gameLabel(g){return g.ids.map((k,i)=>label(k)+' • casa '+g.pos[i]+' • '+g.points[i]+' pontos').join('\n');}
+const expeditionScenes=[
+ ['Ponte de livros: qual objeto ajuda a atravessar?',['Mapa','Ponte de madeira','Lupa'],1],
+ ['Jardim: qual recurso ajuda uma muda?',['Água','Papel','Areia seca'],0],
+ ['Observatório: qual objeto permite observar estrelas?',['Régua','Pincel','Telescópio'],2],
+ ['Museu: como preservar um objeto antigo?',['Guardar protegido','Expor à chuva','Esfregar com areia'],0]
+];
+const relicScenes=[
+ ['Tenho páginas, mas não sou árvore. Onde buscar?',['Lago','Biblioteca','Oficina'],1],
+ ['Guardo a história em exposições. Onde buscar?',['Museu','Mercado','Praça'],0],
+ ['Observo estrelas. Onde buscar?',['Jardim','Estação','Observatório'],2],
+ ['Flores e sementes vivem aqui. Onde buscar?',['Jardim','Biblioteca','Museu'],0]
+];
+const scenes=(name,g)=>{const row=(name==='expedicao'?expeditionScenes:relicScenes)[g.stage%4];return row[0]+'\n'+row[1].map((v,i)=>(i+1)+'. '+v).join('\n');};
 const question=(row,index,total)=>'📚 '+(index+1)+'/'+total+' • '+row[1]+'\n'+row[2].map((v,i)=>(i+1)+'. '+v).join('\n');
 function getDb(state){return state.infinity??={buildings:{},guilds:{},games:{},festival:{},project:{count:0,ids:[]},tournament:{day:'',scores:{}}};}
 export function removeInfinity(state,id){const d=state.infinity;if(!d)return;for(const [key,g] of Object.entries(d.games||{}))if(g.ids?.includes(id))delete d.games[key];for(const [k,g] of Object.entries(d.guilds||{})){g.ids=g.ids.filter(x=>x!==id);if(!g.ids.length)delete d.guilds[k];}delete d.festival?.[id];delete d.tournament?.scores?.[id];if(d.project?.ids)d.project.ids=d.project.ids.filter(k=>k!==id);}
@@ -59,18 +72,18 @@ export async function infinityFeature({name,arg='',state,id,owner=false,now=Date
   if(!g)return out('Use :'+name+' novo.');
   if(arg==='entrar'){if(g.started||g.ids.includes(id)||g.ids.length>=4)return out('Inscrição indisponível.');g.ids.push(id);g.pos.push(0);g.points.push(0);return out('Inscritos: '+g.ids.length+'/4.',true);}
   if(arg==='sair'){if(!g.ids.includes(id)&&!owner)return out('Somente participantes ou responsável encerram.');delete d.games[name];return out('Partida encerrada.',true);}
-  if(arg==='iniciar'){if(g.ids[0]!==id||g.ids.length<2||g.started)return out('Criador inicia com 2–4 participantes.');g.started=true;return out('Começou! :'+name+' jogar 1|2|3'+(name==='imobiliario'?' (escolha quantas casas avançar)':'')+'. '+label(g.ids[g.turn]),true);}
-  if(!g.started||!arg||arg==='mesa')return out(gameLabel(g)+'\nVez: '+label(g.ids[g.turn])+' • :'+name+' jogar 1|2|3');
+  if(arg==='iniciar'){if(g.ids[0]!==id||g.ids.length<2||g.started)return out('Criador inicia com 2–4 participantes.');g.started=true;return out('Começou! :'+name+' jogar 1|2|3'+(name==='imobiliario'?' (escolha quantas casas avançar)':'')+'. '+label(g.ids[g.turn])+(['expedicao','reliquia'].includes(name)?'\n'+scenes(name,g):''),true);}
+  if(!g.started||!arg||arg==='mesa')return out(gameLabel(g)+'\nVez: '+label(g.ids[g.turn])+' • :'+name+' jogar 1|2|3'+(['expedicao','reliquia'].includes(name)?'\n'+scenes(name,g):''));
   if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
   const m=/^jogar ([123])$/.exec(arg);if(!m)return out('Use :'+name+' jogar 1|2|3.');
   const k=g.turn,n=Number(m[1]);g.pos[k]+=n;
   if(name==='imobiliario'){const tile=g.pos[k]%9;if(!Object.hasOwn(g.owned,tile)){g.owned[tile]=k;g.points[k]+=3;}else if(g.owned[tile]===k)g.points[k]++;else g.points[g.owned[tile]]++; }
-  else if(name==='expedicao'||name==='reliquia'){g.points[k]+=n===((g.stage+k)%3)+1?3:1;g.stage++;}
+  else if(name==='expedicao'||name==='reliquia'){const row=(name==='expedicao'?expeditionScenes:relicScenes)[g.stage%4];if(n-1!==row[2])return out('Essa escolha não resolve a pista. Tente outra opção, sem perder pontos.');g.points[k]+=3;g.stage++;}
   else g.points[k]+=n===2?3:1;
   g.turn=(k+1)%g.ids.length;g.expires=now+day;
   const cooperative=['expedicao','reliquia'].includes(name);
-  if(cooperative?g.stage>=g.ids.length*4:g.pos[k]>=18){const best=Math.max(...g.points);for(const member of g.ids){const q=state.players[member];if(q){const y=profile(q);y.completed=clamp(y.completed+1,100000);credit(q,y,now);}}const result=cooperative?'Expedição concluída por toda a equipe!':'Final: '+g.ids.filter((_,i)=>g.points[i]===best).map(label).join(', ')+' • maior pontuação '+best;delete d.games[name];return out(result+'\n'+gameLabel(g),true);}
-  return out(gameLabel(g)+'\nPróximo: '+label(g.ids[g.turn])+(cooperative?' • escolha de exploração '+(g.stage+1):''),true);
+  if(cooperative?g.stage>=g.ids.length*4:g.pos[k]>=18){const best=Math.max(...g.points);for(const member of g.ids){const q=state.players[member];if(q){const y=profile(q);y.completed=clamp(y.completed+1,100000);credit(q,y,now);}}const result=cooperative?(name==='reliquia'?'Relíquias encontradas por toda a equipe!':'Expedição concluída por toda a equipe!'):'Final: '+g.ids.filter((_,i)=>g.points[i]===best).map(label).join(', ')+' • maior pontuação '+best;delete d.games[name];return out(result+'\n'+gameLabel(g),true);}
+  return out(gameLabel(g)+'\nPróximo: '+label(g.ids[g.turn])+(cooperative?' • etapa '+(g.stage+1)+'\n'+scenes(name,g):''),true);
  }
  if(name==='explorar'){const n=Number(arg);if(!Number.isInteger(n)||n<1||n>9)return out('Use :mapainfinity e :explorar 1–9.');if(x.exploreDay!==stamp(now)){x.exploreDay=stamp(now);x.visited=[];}if(x.visited.includes(n))return out('Local já explorado hoje.');x.visited.push(n);x.visits=clamp(x.visits+1,100000);const item=items[n-1];x.collection[item]=clamp((x.collection[item]||0)+1,999);credit(p,x,now);return out('Você visitou '+places[n-1]+' e encontrou '+item+'. Coleção e XP registrados.',true);}
  if(name==='construir'){const n=Number(arg);if(!Number.isInteger(n)||n<1||n>9)return out('Use :construir 1–9. Custo: 2 itens do local.');const k=n-1,level=d.buildings[k]||0,item=items[k];if(level>=5||!x.collection[item]||x.collection[item]<2)return out('Necessário 2 '+item+' e nível abaixo de 5.');x.collection[item]-=2;d.buildings[k]=level+1;x.contributions=clamp(x.contributions+1,100000);credit(p,x,now);return out(places[k]+' nível '+(level+1)+' • construção coletiva.',true);}
