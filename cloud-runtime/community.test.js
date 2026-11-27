@@ -12,9 +12,9 @@ const a='aaaaaa123',b='bbbbbb123',c='cccccc123';
 const state={players:{[a]:{coins:100,xp:0},[b]:{coins:5,xp:0}},custom:{}};
 const now=Date.UTC(2026,10,26,12);
 const go=(name,arg='',id=a,owner=false,activeOnly=false)=>groupFeature({name,arg,state,id,owner,now,activeOnly,choose:()=>0});
-for(const name of groupCommands){assert.equal(parseExtra('!iris '+name,true).name,name);if(groupOwnerCommands.includes(name))assert.equal(parseExtra('!iris '+name,false),null);}
-for(const name of ['audio','voz','imagem','diagnostico','s','som','slonga','xadrez','menu'])assert.equal(parseExtra('!iris '+name,true).name,name);
-assert.ok(menu().includes('!iris velhadupla'));
+for(const name of groupCommands){assert.equal(parseExtra(':'+name,true).name,name);if(groupOwnerCommands.includes(name))assert.equal(parseExtra(':'+name,false),null);}
+for(const name of ['audio','voz','imagem','diagnostico','s','som','slonga','xadrez','menu'])assert.equal(parseExtra(':'+name,true).name,name);
+assert.ok(menu().includes(':velhadupla'));
 assert.deepEqual(shortActivity('casa 3'),{name:'velhadupla',arg:'3'});
 assert.deepEqual(shortActivity('voto 1'),{name:'votar',arg:'1'});
 assert.deepEqual(shortActivity('resposta 2'),{name:'resposta',arg:'2'});
