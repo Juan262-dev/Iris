@@ -1,3 +1,4 @@
+import {makeStopTickets,parseStopPrivate} from './stopPrivate.js';
 // Experimental headless connection test, not the full Iris command engine.
 import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
@@ -34,6 +35,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     if (typeof makeSocket !== 'function') throw new Error('Baileys socket export unavailable');
     const chats = await loadChatSettings();
     const features = makeFeatures();
+    const stopTickets=makeStopTickets();
     setRuntime('whatsapp','conectando');
     const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
     const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5,...infinityMedia]);
@@ -82,6 +84,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 if(closed||!chats.has(jid))continue;
                 try{const action=await features.schedule({jid,now:Date.parse(stamp+':00Z')});
                     if(action&&!closed&&chats.has(jid))await sock.groupSettingUpdate(jid,action);
+                    const stopResult=await features.stopTick({jid,now:Date.now()});if(stopResult&&!closed&&chats.has(jid))await sock.sendMessage(jid,{text:stopResult});
                 }catch{console.error('Iris: scheduled group update failed');}
             }
         })().catch(()=>console.error('Iris: schedule tick failed')).finally(()=>{scheduleWork=null;});
@@ -201,7 +204,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
         for(const msg of messages||[]){
             const jid=msg.key?.remoteJid,id=msg.key?.id;
             const plain=msg.message?.conversation||msg.message?.extendedTextMessage?.text||'';
-            if(!jid?.endsWith('@g.us'))continue;
+            if(!jid?.endsWith('@g.us')){if(!msg.key?.fromMe&&unoRoute(jid)&&fresh(msg)&&parseStopPrivate(plain)&&normal.length<30)normal.push(msg);continue;}
             if(String(plain).trim().toLowerCase()!==':ping'){
                 const text=plain||msg.message?.imageMessage?.caption||msg.message?.documentMessage?.caption||msg.message?.videoMessage?.caption||'';
                 const enabled=chats.has(jid),owner=msg.key?.fromMe===true;
@@ -233,6 +236,15 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 const ts = Number(msg.messageTimestamp || 0);
                 if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
                 const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || msg.message?.videoMessage?.caption || '';
+                if(!jid.endsWith('@g.us')){
+                    const answer=parseStopPrivate(text);if(!answer||msg.key?.fromMe||!remember(jid,id)||!allowCommand(jid,jid))continue;
+                    try{const ticket=stopTickets.find(answer.code);if(!ticket||!chats.has(ticket.jid)||await worldRecipient({jid:ticket.jid,route:unoRoute(jid)})!==ticket.recipient){await sock.sendMessage(jid,{text:'Código inválido ou expirado. Peça :stop pv no grupo.'});continue;}
+                        const source={...msg,key:{...msg.key,participant:ticket.actor,remoteJid:ticket.jid,fromMe:false}};
+                        const result=await runFeature({name:'stop',arg:'respostapv '+ticket.match+' '+ticket.round+' '+answer.answer},ticket.jid,ticket.actor,source,false);
+                        if(typeof result==='string'){if(result.startsWith('✅ Resposta registrada')){stopTickets.remove(answer.code);await sock.sendMessage(jid,{text:'✅ Resposta registrada no STOP.'});if(!closed&&chats.has(ticket.jid))await sock.sendMessage(ticket.jid,{text:result});}else await sock.sendMessage(jid,{text:result});}
+                    }catch{await sock.sendMessage(jid,{text:'Não foi possível registrar. Tente novamente.'}).catch(()=>{});}
+                    continue;
+                }
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
                 const owner = msg.key?.fromMe === true;
                 const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
@@ -252,6 +264,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 } else if (action === 'off') {
                     await chats.set(jid, false);
                     await world.revokeGroup(jid);
+                    stopTickets.revokeGroup(jid);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (shortMove) {
                     try { response=await features.chessMove({jid,actor,arg:plain,sock,msg,owner}); if(!response&&activity?.name==='uno')response=await features.activity({jid,actor,command:activity,sock,msg,owner}); }
@@ -259,6 +272,13 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 } else if (activity) {
                     try{response=await features.activity({jid,actor,command:activity,sock,msg,owner});}
                     catch{console.error('Iris: short activity processing failed');}
+                } else if(extra?.name==='stop'&&extra.arg.toLowerCase()==='pv'){
+                    try{const result=await runFeature(extra,jid,actor,msg,owner);if(!result?.stopPrivate)response=result;else{
+                        const recipient=await worldRecipient({jid,route:unoRoute(owner?sock.user?.id:msg.key?.participant)});
+                        const code=recipient&&!owner?stopTickets.issue({jid,actor,recipient,round:result.round,match:result.match}):null;
+                        if(!code)response='Não consegui verificar o destinatário. Use :stop resposta no grupo.';
+                        else try{await sock.sendMessage(recipient,{text:'📝 STOP no privado\n'+result.prompt+'\nEnvie :stop responder '+code+' palavra | palavra | ...\nUse - para deixar uma categoria vazia. Não compartilhe o código.'});response='📩 Instruções do STOP enviadas no seu privado.';}catch{stopTickets.remove(code);response='Não consegui enviar no privado.';}
+                    }}catch{response='STOP privado indisponível.';}
                 } else if(extra?.name==='world'){
                     const identity={jid,actor,route:unoRoute(owner?sock.user?.id:msg.key?.participant)};
                     if(extra.arg==='sair'){try{await world.revoke(identity);response='🌸 Sessão do Íris World revogada.';}catch{response='🌸 Não foi possível revogar a sessão. Tente novamente.';}}
