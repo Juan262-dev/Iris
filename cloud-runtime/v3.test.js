@@ -13,7 +13,7 @@ const s=(name,arg='',id=a)=>socialFeature({name,arg,state,id,now});
 const u=(arg,id=a,route=null)=>megaGame({name:'uno',arg,state,id,route,now,choose:()=>0});
 for(const name of [...games3,...social3,...media3Names])assert.equal(parseExtra(':'+name,false).name,name);
 assert.equal(parseExtra('!ping',false),null);
-assert.ok(menu().includes('Cloud 4.0'));
+assert.ok(menu().includes('Cloud 5.0'));
 assert.deepEqual(short3('par 2 7'),{name:'memoria',arg:'2 7'});
 assert.equal((await g('memoria','2 7',a,true)).text,null);
 assert.ok((await g('memoria','novo')).text.image);
