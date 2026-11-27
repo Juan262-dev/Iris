@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
-export function serialGroups({limit=1000,perGroup=16,totalLimit=256}={}){
+export function serialGroups({limit=1000,perGroup=128,totalLimit=256}={}){
  const active=new Map(),counts=new Map();let total=0;return async (key,fn)=>{
   const count=counts.get(key)||0;if((!active.has(key)&&active.size>=limit)||count>=perGroup||total>=totalLimit)throw Error('busy');counts.set(key,count+1);total++;
   const prior=active.get(key)||Promise.resolve();let release;
