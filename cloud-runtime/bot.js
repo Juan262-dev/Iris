@@ -23,8 +23,8 @@ import { studioCommand,studioNames } from './studio.js';
 import { convertMedia,converterNames } from './converters.js';
 import { setRuntime,makeJobQueue,reconnectDelay,incrementRuntime } from './runtimeStatus.js';
 
-export async function startHeadlessBot(restartCount = 0) {
-    if (process.env.IRIS_BOT_ENABLED !== 'true') return;
+export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:false }) {
+    if (lifecycle.stopping || process.env.IRIS_BOT_ENABLED !== 'true') return;
     const makeSocket = baileys.makeWASocket || baileys.default;
     if (typeof makeSocket !== 'function') throw new Error('Baileys socket export unavailable');
     const chats = await loadChatSettings();
@@ -73,6 +73,14 @@ export async function startHeadlessBot(restartCount = 0) {
             }
         })().catch(()=>console.error('Iris: schedule tick failed')).finally(()=>{scheduleWork=null;});
     };
+    lifecycle.stop=async()=>{
+        lifecycle.stopping=true;closed=true;
+        if(scheduleTimer){clearInterval(scheduleTimer);scheduleTimer=null;}
+        if(dbTimer){clearInterval(dbTimer);dbTimer=null;}
+        try{await commandQueue;if(scheduleWork)await scheduleWork;await mediaQueue.idle();if(dbWork)await dbWork;await auth.saveCreds();}
+        finally{try{sock.end(new Error('Manager shutdown'));}catch{}setRuntime('whatsapp','desativado');}
+    };
+    if(lifecycle.stopping){await lifecycle.stop();return;}
     sock.ev.on('creds.update', () => auth.saveCreds().catch(() => { process.exit(1); }));
     sock.ev.on('connection.update', async update => {
         if (closed) return;
@@ -103,7 +111,7 @@ export async function startHeadlessBot(restartCount = 0) {
                     await auth.saveCreds();
                     console.log('Iris: bounded reconnect scheduled');
                     await new Promise(resolve=>setTimeout(resolve,delay));
-                    await startHeadlessBot(attempt+1);
+                    if(!lifecycle.stopping)await startHeadlessBot(attempt+1,lifecycle);
                 }catch{setRuntime('whatsapp','desconectado');console.error('Iris: bounded reconnect failed');}
                 return;
             }
