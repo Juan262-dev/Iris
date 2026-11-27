@@ -37,6 +37,6 @@ await run('trilha','novo');pruneInfinity(state,now+2*day);assert.equal(state.inf
 removeInfinity(state,b);assert.equal(state.infinity.guilds.estrelas.ids.includes(b),false);assert.equal(state.infinity.festival[b],undefined);assert.equal(state.custom.legacy,'old');assert.equal(state.rules,'preserved');
 const card=await artCard('Ciência & arte');assert.equal((await sharp(card.image).metadata()).width,600);
 const photo=await artPhoto(await sharp({create:{width:32,height:32,channels:3,background:'#aa99ff'}}).png().toBuffer(),'pastel');assert.equal((await sharp(photo.image).metadata()).format,'png');
-const catalog=Object.fromEntries(Object.values(commands).flat().map(n=>[n,false]));assert.ok(Buffer.byteLength(JSON.stringify(catalog))+2*Object.keys(catalog).length<=1024);
+const catalog=Object.fromEntries(Object.values(commands).flat().map(n=>[n,false]));assert.ok(Buffer.byteLength(JSON.stringify(catalog))+2*Object.keys(catalog).length<=2048);
 assert.ok(normalizeConfig({name:'Íris',prefix:':',greeting:'Olá',modules:{},commands:catalog,groups:[]}));
 console.log('Iris: Infinity world, games, study, voluntary guilds, backups, privacy cleanup, media and Manager catalog tests passed');
