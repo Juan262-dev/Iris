@@ -51,6 +51,11 @@ node --check cloud-runtime/community5.js
 node --check cloud-runtime/media5.js
 node --check cloud-runtime/transaction5.js
 node cloud-runtime/v5.test.js
+node --check cloud-runtime/manager.js
+node --check cloud-runtime/managerWorker.js
+node --check cloud-runtime/managerSupervisor.js
+node --check cloud-runtime/manager-web/app.js
+node cloud-runtime/manager.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
