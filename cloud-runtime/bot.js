@@ -1,3 +1,4 @@
+import {stopForm,gameNotice} from './gameVisual.js';
 import {makeStopTickets,formatStopAnswers,stopPrompt,stopSelfRoutes,stopSelfRecipient,stopPrivateCandidate} from './stopPrivate.js';
 // Experimental headless connection test, not the full Iris command engine.
 import * as baileys from '@whiskeysockets/baileys';
@@ -84,7 +85,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 if(closed||!chats.has(jid))continue;
                 try{const action=await features.schedule({jid,now:Date.parse(stamp+':00Z')});
                     if(action&&!closed&&chats.has(jid))await sock.groupSettingUpdate(jid,action);
-                    const stopResult=await features.stopTick({jid,now:Date.now()});if(stopResult&&!closed&&chats.has(jid))await sock.sendMessage(jid,{text:stopResult});
+                    const stopResult=await features.stopTick({jid,now:Date.now()});if(stopResult&&!closed&&chats.has(jid))await sock.sendMessage(jid,await gameNotice('STOP',stopResult).catch(()=>({text:stopResult})));
                 }catch{console.error('Iris: scheduled group update failed');}
             }
         })().catch(()=>console.error('Iris: schedule tick failed')).finally(()=>{scheduleWork=null;});
@@ -243,7 +244,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                         if(formatted===null){await sock.sendMessage(jid,{text:'Responda à mensagem original com exatamente '+ticket.categories.length+' linhas, na ordem das categorias. Use - quando não souber.'},{quoted:msg});continue;}
                         const source={...msg,key:{...msg.key,participant:ticket.owner?sock.user?.id:ticket.actor,remoteJid:ticket.jid,fromMe:ticket.owner}};
                         const result=await runFeature({name:'stop',arg:'respostapv '+ticket.match+' '+ticket.round+' '+formatted},ticket.jid,ticket.actor,source,ticket.owner);
-                        if(typeof result==='string'){if(result.startsWith('✅ Resposta registrada')){stopTickets.remove(answer.code);await sock.sendMessage(jid,{text:'✅ Resposta registrada no STOP.'});if(!closed&&chats.has(ticket.jid))await sock.sendMessage(ticket.jid,{text:result});}else await sock.sendMessage(jid,{text:result});}
+                        if(typeof result==='string'){if(result.startsWith('✅ Resposta registrada')){stopTickets.remove(answer.code);await sock.sendMessage(jid,{text:'✅ Resposta registrada no STOP.'});if(!closed&&chats.has(ticket.jid))await sock.sendMessage(ticket.jid,await gameNotice('STOP',result).catch(()=>({text:result})));}else await sock.sendMessage(jid,{text:result});}
                     }catch{await sock.sendMessage(jid,{text:'Não foi possível registrar. Tente novamente.'}).catch(()=>{});}
                     continue;
                 }
@@ -278,7 +279,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                         const recipient=owner?stopSelfRecipient(ownStopRoutes()):await worldRecipient({jid,route:unoRoute(msg.key?.participant)})||await worldRecipient({jid,route:unoRoute(msg.key?.participantAlt)});
                         const code=recipient?stopTickets.issue({jid,actor,recipient,owner,round:result.round,match:result.match,categories:result.categories}):null;
                         if(!code)response='Não consegui verificar o destinatário. Use :stop resposta no grupo.';
-                        else try{const sent=await sock.sendMessage(recipient,{text:stopPrompt(result)});if(!stopTickets.bind(code,sent?.key?.id))throw Error('missing stop message id');response=owner?'📩 Formulário enviado para a conversa com você mesmo (seu número). Responda à mensagem do STOP lá.':'📩 Formulário enviado no seu privado. Responda à mensagem da Íris.';}catch{stopTickets.remove(code);response='Não consegui enviar no privado. Use :stop pv novamente.';}
+                        else try{const sent=await sock.sendMessage(recipient,await stopForm(result,stopPrompt(result)).catch(()=>({text:stopPrompt(result)})));if(!stopTickets.bind(code,sent?.key?.id))throw Error('missing stop message id');response=owner?'📩 Formulário enviado para a conversa com você mesmo (seu número). Responda à mensagem do STOP lá.':'📩 Formulário enviado no seu privado. Responda à mensagem da Íris.';}catch{stopTickets.remove(code);response='Não consegui enviar no privado. Use :stop pv novamente.';}
                     }}catch{response='STOP privado indisponível.';}
                 } else if (extra&&mediaNames.has(extra.name)){
                     const accepted=mediaQueue.add(async()=>{
@@ -295,7 +296,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 if(!closed&&response){
                     try{
                         if(action==='off')await sock.sendMessage(jid,{text:response},{quoted:msg});
-                        else await deliver(jid,response,msg);
+                        else {if(extra?.name==='stop'&&typeof response==='string'&&!/^📩|^Não consegui|^STOP privado/.test(response))response=await gameNotice('STOP',response).catch(()=>response);await deliver(jid,response,msg);}
                     }catch{incrementRuntime('errors');console.error('Iris: individual response delivery failed');}
                 }
                 incrementRuntime('processed');if(Date.now()-commandStarted>10000)incrementRuntime('slow');
