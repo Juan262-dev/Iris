@@ -6,12 +6,12 @@ export function decideCommand({ jid, fromMe, text, enabled }) {
     if (typeof jid !== 'string' || !jid.endsWith('@g.us')) return null;
     if (typeof text !== 'string') return null;
     const command = text.trim().toLowerCase().replace(/\s+/g, ' ');
-    if (command === '!iris on') return fromMe === true ? 'on' : null;
-    if (command === '!iris off') return fromMe === true ? 'off' : null;
+    if (command === ':on') return fromMe === true ? 'on' : null;
+    if (command === ':off') return fromMe === true ? 'off' : null;
     if (!enabled) return null;
-    if (command === '!iris ping') return 'ping';
-    if (command === '!iris menu') return 'menu';
-    if (command === '!iris status') return 'status';
+    if (command === ':ping') return 'ping';
+    if (command === ':menu') return 'menu';
+    if (command === ':status') return 'status';
     return null;
 }
 
