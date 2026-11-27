@@ -1,13 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
-export function serialGroups({limit=1000}={}){
- const active=new Map();return async (key,fn)=>{
-  if(!active.has(key)&&active.size>=limit)throw Error('busy');
+export function serialGroups({limit=1000,perGroup=16,totalLimit=256}={}){
+ const active=new Map(),counts=new Map();let total=0;return async (key,fn)=>{
+  const count=counts.get(key)||0;if((!active.has(key)&&active.size>=limit)||count>=perGroup||total>=totalLimit)throw Error('busy');counts.set(key,count+1);total++;
   const prior=active.get(key)||Promise.resolve();let release;
   const gate=new Promise(resolve=>release=resolve),tail=prior.catch(()=>{}).then(()=>gate);
   active.set(key,tail);
   await prior.catch(()=>{});
-  try{return await fn();}finally{release();if(active.get(key)===tail)active.delete(key);}
+  try{return await fn();}finally{release();total--;const left=counts.get(key)-1;if(left)counts.set(key,left);else counts.delete(key);if(active.get(key)===tail)active.delete(key);}
  };
 }
 export const context5=new AsyncLocalStorage();
