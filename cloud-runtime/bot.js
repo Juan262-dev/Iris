@@ -1,4 +1,4 @@
-import {makeStopTickets,parseStopPrivate,parseStopQuote,formatStopAnswers,stopPrompt} from './stopPrivate.js';
+import {makeStopTickets,formatStopAnswers,stopPrompt,stopSelfRoutes,stopSelfRecipient,stopPrivateCandidate} from './stopPrivate.js';
 // Experimental headless connection test, not the full Iris command engine.
 import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
@@ -64,6 +64,8 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
         const meta=await sock.groupMetadata(jid);
         return !closed&&chats.has(jid)?privateWorldRecipient(meta.participants,route,unoRoute):null;
     };
+    const ownStopRoutes=()=>stopSelfRoutes(sock.user,auth.state.creds.me,unoRoute);
+    const stopCandidate=msg=>stopPrivateCandidate({fromMe:msg.key?.fromMe===true,jid:msg.key?.remoteJid,message:msg.message,plain:msg.message?.conversation||msg.message?.extendedTextMessage?.text||'',tickets:stopTickets,selfRoutes:ownStopRoutes(),normalize:unoRoute});
     const worldVerify=async identity=>!!await worldRecipient(identity);
     const world=makePersistentWorld({verify:worldVerify,operate:(identity,command)=>!closed&&!lifecycle.stopping&&chats.has(identity.jid)?features.world(identity,command):null});
     lifecycle.world=input=>closed||lifecycle.stopping?{status:503}:world.rpc(input);
@@ -204,7 +206,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
         for(const msg of messages||[]){
             const jid=msg.key?.remoteJid,id=msg.key?.id;
             const plain=msg.message?.conversation||msg.message?.extendedTextMessage?.text||'';
-            if(!jid?.endsWith('@g.us')){if(!msg.key?.fromMe&&unoRoute(jid)&&fresh(msg)&&(parseStopPrivate(plain)||stopTickets.quoted(parseStopQuote(msg.message)?.messageId))&&normal.length<30)normal.push(msg);continue;}
+            if(!jid?.endsWith('@g.us')){if(fresh(msg)&&stopCandidate(msg)&&normal.length<30)normal.push(msg);continue;}
             if(String(plain).trim().toLowerCase()!==':ping'){
                 const text=plain||msg.message?.imageMessage?.caption||msg.message?.documentMessage?.caption||msg.message?.videoMessage?.caption||'';
                 const enabled=chats.has(jid),owner=msg.key?.fromMe===true;
@@ -237,13 +239,12 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
                 const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || msg.message?.videoMessage?.caption || '';
                 if(!jid.endsWith('@g.us')){
-                    const quote=parseStopQuote(msg.message),match=quote?stopTickets.quoted(quote.messageId):null;
-                    const answer=match?{code:match.code,answer:quote.answer}:parseStopPrivate(text);if(!answer||msg.key?.fromMe||!remember(jid,id)||!allowCommand(jid,jid))continue;
-                    try{const ticket=stopTickets.find(answer.code);if(!ticket||!chats.has(ticket.jid)||await worldRecipient({jid:ticket.jid,route:unoRoute(jid)})!==ticket.recipient){await sock.sendMessage(jid,{text:'Código inválido ou expirado. Peça :stop pv no grupo.'});continue;}
-                        const formatted=match?formatStopAnswers(answer.answer,ticket.categories):answer.answer;
+                    const answer=stopCandidate(msg);if(!answer||!remember(jid,id)||!allowCommand(jid,jid))continue;
+                    try{const ticket=stopTickets.find(answer.code);if(!ticket||!chats.has(ticket.jid)||ticket.owner!==(msg.key?.fromMe===true)||(ticket.owner?(!ownStopRoutes().includes(unoRoute(jid))||!ownStopRoutes().includes(ticket.recipient)):await worldRecipient({jid:ticket.jid,route:unoRoute(jid)})!==ticket.recipient)){await sock.sendMessage(jid,{text:'Código inválido ou expirado. Peça :stop pv no grupo.'});continue;}
+                        const formatted=answer.quoted?formatStopAnswers(answer.answer,ticket.categories):answer.answer;
                         if(formatted===null){await sock.sendMessage(jid,{text:'Responda à mensagem original com exatamente '+ticket.categories.length+' linhas, na ordem das categorias. Use - quando não souber.'},{quoted:msg});continue;}
-                        const source={...msg,key:{...msg.key,participant:ticket.actor,remoteJid:ticket.jid,fromMe:false}};
-                        const result=await runFeature({name:'stop',arg:'respostapv '+ticket.match+' '+ticket.round+' '+formatted},ticket.jid,ticket.actor,source,false);
+                        const source={...msg,key:{...msg.key,participant:ticket.owner?sock.user?.id:ticket.actor,remoteJid:ticket.jid,fromMe:ticket.owner}};
+                        const result=await runFeature({name:'stop',arg:'respostapv '+ticket.match+' '+ticket.round+' '+formatted},ticket.jid,ticket.actor,source,ticket.owner);
                         if(typeof result==='string'){if(result.startsWith('✅ Resposta registrada')){stopTickets.remove(answer.code);await sock.sendMessage(jid,{text:'✅ Resposta registrada no STOP.'});if(!closed&&chats.has(ticket.jid))await sock.sendMessage(ticket.jid,{text:result});}else await sock.sendMessage(jid,{text:result});}
                     }catch{await sock.sendMessage(jid,{text:'Não foi possível registrar. Tente novamente.'}).catch(()=>{});}
                     continue;
@@ -277,10 +278,10 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                     catch{console.error('Iris: short activity processing failed');}
                 } else if(extra?.name==='stop'&&extra.arg.toLowerCase()==='pv'){
                     try{const result=await runFeature(extra,jid,actor,msg,owner);if(!result?.stopPrivate)response=result;else{
-                        const recipient=await worldRecipient({jid,route:unoRoute(owner?sock.user?.id:msg.key?.participant)});
-                        const code=recipient&&!owner?stopTickets.issue({jid,actor,recipient,round:result.round,match:result.match,categories:result.categories}):null;
+                        const recipient=owner?stopSelfRecipient(ownStopRoutes()):await worldRecipient({jid,route:unoRoute(msg.key?.participant)})||await worldRecipient({jid,route:unoRoute(msg.key?.participantAlt)});
+                        const code=recipient?stopTickets.issue({jid,actor,recipient,owner,round:result.round,match:result.match,categories:result.categories}):null;
                         if(!code)response='Não consegui verificar o destinatário. Use :stop resposta no grupo.';
-                        else try{const sent=await sock.sendMessage(recipient,{text:stopPrompt(result)});if(!stopTickets.bind(code,sent?.key?.id))throw Error('missing stop message id');response='📩 Formulário enviado no seu privado. Responda à mensagem da Íris.';}catch{stopTickets.remove(code);response='Não consegui enviar no privado. Use :stop pv novamente.';}
+                        else try{const sent=await sock.sendMessage(recipient,{text:stopPrompt(result)});if(!stopTickets.bind(code,sent?.key?.id))throw Error('missing stop message id');response=owner?'📩 Formulário enviado para a conversa com você mesmo (seu número). Responda à mensagem do STOP lá.':'📩 Formulário enviado no seu privado. Responda à mensagem da Íris.';}catch{stopTickets.remove(code);response='Não consegui enviar no privado. Use :stop pv novamente.';}
                     }}catch{response='STOP privado indisponível.';}
                 } else if(extra?.name==='world'){
                     const identity={jid,actor,route:unoRoute(owner?sock.user?.id:msg.key?.participant)};
