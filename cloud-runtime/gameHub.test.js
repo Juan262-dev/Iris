@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseExtra,menu} from './features.js';
-import {gameHub,gameCatalog,retiredGames,gameGuide} from './gameHub.js';
+import {gameHub,gameCatalog,retiredGames,gameGuide,gameHubPage} from './gameHub.js';
 import {makeLocalGames} from './localFun.js';
 import {makeExtras} from './extras.js';
 import {game3} from './games3.js';
@@ -23,3 +23,30 @@ await game5({name:'sudoku',arg:'novo facil',state,id:a,choose:()=>0});assert.mat
 assert.equal(state.players[a].worldPosition,9);assert.equal(state.players[a].livingWorld.task,'treinar');assert.equal(state.custom.old,true);
 const http=readFileSync(new URL('../lib/Initialize/cloudPreview.js',import.meta.url),'utf8');assert.ok(http.includes('writeHead(410'));assert.ok(!http.includes('makeWorldHttp'));
 console.log('Iris: Game Center catalog, retired RPG isolation, game guides, rankings and gameplay improvements tests passed');
+
+import {gameCatalogVisual} from './gameVisual.js';
+import sharp from 'sharp';
+const first=gameHubPage('');
+assert.equal(first.rows.length,8);
+assert.equal(first.total,Object.keys(gameCatalog).length);
+const catalogKeys=[];
+for(let page=1;page<=first.pages;page++){
+ const p=gameHubPage('lista '+page);
+ assert.equal(p.page,page);assert.ok(p.caption.length<=1000);
+ catalogKeys.push(...p.rows.map(r=>r.key));
+ for(const r of p.rows)assert.ok(!retiredGames.has(r.key));
+ const image=await gameCatalogVisual(p);
+ assert.equal((await sharp(image.image).metadata()).width,720);
+ assert.equal(image.caption,p.caption);
+}
+assert.deepEqual(catalogKeys,Object.keys(gameCatalog));
+assert.ok(gameHubPage('solo').rows.every(r=>r.mode!=='grupo'));
+assert.ok(gameHubPage('grupo').rows.every(r=>r.mode!=='solo'));
+for(const mode of ['tabuleiro','logica','estudos','equipe','rapidos']){
+ assert.ok(gameHubPage(mode).rows.length>0);
+}
+assert.ok(gameHubPage('lista 99').error);
+assert.equal(gameHubPage('texto'),null);
+assert.equal(gameHubPage('ranking stop'),null);
+assert.equal(gameHubPage('domino'),null);
+console.log('Iris: visual catalog pagination, category filters, caption bounds and retired-game exclusion tests passed');
