@@ -76,9 +76,9 @@ export async function infinityFeature({name,arg='',state,id,owner=false,now=Date
   if(!g.started||!arg||arg==='mesa')return out(gameLabel(g)+'\nVez: '+label(g.ids[g.turn])+' • :'+name+' jogar 1|2|3'+(['expedicao','reliquia'].includes(name)?'\n'+scenes(name,g):''));
   if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
   const m=/^jogar ([123])$/.exec(arg);if(!m)return out('Use :'+name+' jogar 1|2|3.');
-  const k=g.turn,n=Number(m[1]);g.pos[k]+=n;
+  const k=g.turn,n=Number(m[1]);if(!['expedicao','reliquia'].includes(name))g.pos[k]+=n;
   if(name==='imobiliario'){const tile=g.pos[k]%9;if(!Object.hasOwn(g.owned,tile)){g.owned[tile]=k;g.points[k]+=3;}else if(g.owned[tile]===k)g.points[k]++;else g.points[g.owned[tile]]++; }
-  else if(name==='expedicao'||name==='reliquia'){const row=(name==='expedicao'?expeditionScenes:relicScenes)[g.stage%4];if(n-1!==row[2])return out('Essa escolha não resolve a pista. Tente outra opção, sem perder pontos.');g.points[k]+=3;g.stage++;}
+  else if(name==='expedicao'||name==='reliquia'){const row=(name==='expedicao'?expeditionScenes:relicScenes)[g.stage%4];if(n-1!==row[2])return out('Essa escolha não resolve a pista. Tente outra opção, sem perder pontos.');g.points[k]+=3;g.pos[k]++;g.stage++;}
   else g.points[k]+=n===2?3:1;
   g.turn=(k+1)%g.ids.length;g.expires=now+day;
   const cooperative=['expedicao','reliquia'].includes(name);
