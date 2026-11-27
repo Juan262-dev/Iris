@@ -6,7 +6,7 @@ export async function makeSticker(msg, baileys) {
     const doc = msg.message?.documentMessage;
     if (doc?.mimetype === 'image/gif') return makeAnimatedSticker(doc,baileys);
     const image = msg.message?.imageMessage;
-    if (!image || !['image/jpeg','image/png','image/webp'].includes(image.mimetype)) return '🌸 Envie uma foto sua com a legenda !iris s. Imagens JPG, PNG ou WebP; GIF como documento com a mesma legenda.';
+    if (!image || !['image/jpeg','image/png','image/webp'].includes(image.mimetype)) return '🌸 Envie uma foto sua com a legenda :s. Imagens JPG, PNG ou WebP; GIF como documento com a mesma legenda.';
     const limit = 5 * 1024 * 1024;
     if (Number(image.fileLength || 0) > limit) return '🌸 Envie uma imagem de até 5 MB.';
     const stream = await baileys.downloadContentFromMessage(image,'image');
@@ -51,7 +51,7 @@ export async function makeAnimatedSticker(doc, baileys) {
 
 export async function makeTextSticker(arg) {
     const text=String(arg||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim();
-    if(!text||[...text].length>60)return '🌸 Use !iris texto seguido de até 60 caracteres.';
+    if(!text||[...text].length>60)return '🌸 Use :texto seguido de até 60 caracteres.';
     const esc=v=>v.replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[x]));
     const chars=[...text];
     const lines=[];for(let i=0;i<chars.length;i+=15)lines.push(chars.slice(i,i+15).join(''));
