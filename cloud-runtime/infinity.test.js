@@ -32,7 +32,7 @@ assert.equal((await run('simulado','responder 1',b)).changed,false);
 for(let i=0;i<4;i++)await run('simulado','responder 1');
 assert.equal(state.players[a].infinity.study,undefined);assert.equal(state.players[a].infinity.studyDone,4);
 assert.match((await run('flashcard','ciencia revelar')).text,/—/);
-assert.equal((await run('missaoinfinity','concluir')).changed,true);assert.equal((await run('missaoinfinity','concluir')).changed,false);
+await run('explorar','2');await run('explorar','3');assert.equal((await run('missaoinfinity','concluir')).changed,true);assert.equal((await run('missaoinfinity','concluir')).changed,false);
 await run('trilha','novo');pruneInfinity(state,now+2*day);assert.equal(state.infinity.games.trilha,undefined);
 removeInfinity(state,b);assert.equal(state.infinity.guilds.estrelas.ids.includes(b),false);assert.equal(state.infinity.festival[b],undefined);assert.equal(state.custom.legacy,'old');assert.equal(state.rules,'preserved');
 const card=await artCard('Ciência & arte');assert.equal((await sharp(card.image).metadata()).width,600);
