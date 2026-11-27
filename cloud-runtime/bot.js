@@ -175,7 +175,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             if(closed||!chats.has(jid))return;
             const publicPart=payload.public;
             if(publicPart)await sock.sendMessage(jid,typeof publicPart==='string'?{text:publicPart}:publicPart,{quoted:msg});
-            if(failed)await sock.sendMessage(jid,{text:'🌸 Algumas mãos não puderam ser enviadas no privado. O jogador pode usar :uno pv ou :uno mao. Nenhuma carta será revelada no grupo.'},{quoted:msg});
+            if(failed)await sock.sendMessage(jid,{text:'🌸 Algumas mãos não puderam ser enviadas no privado. O jogador pode usar '+(payload.game==='domino'?':domino pv ou :domino mao':':uno pv ou :uno mao')+'. Nenhuma peça ou carta será revelada no grupo.'},{quoted:msg});
             return;
         }
         if(response.soundSticker){
