@@ -34,7 +34,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
     const m=state.megaGames??={};
     if(name==='uno'){
         let g=m.uno;if(g&&g.expires<=now){delete m.uno;g=null;}
-        if(activeOnly&&(!g?.started||g.ids[g.turn]!==id))return out(null);
+        if(activeOnly&&(!g?.started||!g.ids.includes(id)))return out(null);
         if(arg==='novo'){
             if(g)return out('Já existe uma mesa de UNO.');
             m.uno={ids:[id],routes:{},started:false,expires:now+600000};
@@ -77,15 +77,16 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
             if(!validUnoRoute(g.routes[id]))return out('Confirme :uno pv para receber sua mão no privado.');
             return out(await pack([id],'🃏 Sua mão será enviada apenas no privado.',false));
         }
-        if(!arg||arg==='mesa')return out(await unoPublic(g,unoBoard(g)));
-        if(!ready())return out(activeOnly?null:'Todos precisam confirmar :uno pv para continuar esta partida.');
-        if(g.ids[g.turn]!==id)return out(activeOnly?null:'Aguarde sua vez.');
+        if(!arg||arg==='mesa')return out(await unoPublic(g,unoBoard(g)+'\nVocê: '+label(id)+' | '+(g.ids[g.turn]===id?'É sua vez.':'Aguarde sua vez.')+'\nPV confirmado: '+g.ids.filter(k=>validUnoRoute(g.routes[k])).length+'/'+g.ids.length+'.'+(ready()?'':' Todos precisam enviar :uno pv.')));
+        if(!ready())return out('🃏 Partida aguardando confirmação do PV. '+g.ids.filter(k=>validUnoRoute(g.routes[k])).length+'/'+g.ids.length+' confirmados. Falta: '+g.ids.filter(k=>!validUnoRoute(g.routes[k])).map(label).join(', ')+'. Cada jogador pendente deve enviar :uno pv.');
+        if(g.ids[g.turn]!==id)return out('🃏 Ainda não é sua vez. Você: '+label(id)+'. Vez de '+label(g.ids[g.turn])+'.');
         if(arg==='comprar'){draw(g,id,1,choose);next(g);g.expires=now+86400000;return out(await pack([id],'Carta comprada.'),true);}
         const match=/^(?:jogar )?([vagb][0-9srd]|c)(?: (vermelho|amarelo|verde|azul))?$/.exec(arg);
         if(!match)return out('Use carta v5, carta c azul ou comprar carta.');
         const card=match[1],hand=g.hands[id],top=g.discard.at(-1);
         const chosenColor=Object.keys(colorNames).find(k=>colorNames[k]===match[2]);
-        if(!hand.includes(card)||card==='c'&&!chosenColor||card!=='c'&&(card[0]!==g.color&&card.slice(1)!==top.slice(1)))return out('Carta inválida para esta jogada.');
+        if(!hand.includes(card))return out('🃏 Carta não disponível para você. Use :uno mao para consultar sua mão no privado.');
+        if(card==='c'&&!chosenColor||card!=='c'&&(card[0]!==g.color&&card.slice(1)!==top.slice(1)))return out('🃏 Carta incompatível com a mesa. Cor atual: '+colorNames[g.color]+'. Jogue uma carta da mesma cor, mesmo valor ou coringa.');
         hand.splice(hand.indexOf(card),1);g.discard.push(card);g.color=card==='c'?chosenColor:card[0];
         if(!hand.length){const result=await unoPublic(g,'🏆 '+label(id)+' venceu o UNO!');delete m.uno;return out(result,true);}
         const updated=[id],kind=card.slice(1);
@@ -165,7 +166,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
 }
 export function megaShort(text){
     const t=String(text||'').trim().toLowerCase();
-    const card=/^carta ([vagb][0-9srd]|c(?: (?:vermelho|amarelo|verde|azul)))$/.exec(t);
+    const card=/^(?:carta\s+)?([vagb][0-9srd]|c(?: (?:vermelho|amarelo|verde|azul)))$/.exec(t);
     if(card)return {name:'uno',arg:card[1]};
     if(t==='comprar carta')return {name:'uno',arg:'comprar'};
     const shot=/^tiro ([a-f][1-6])$/.exec(t);return shot?{name:'naval',arg:shot[1]}:null;
