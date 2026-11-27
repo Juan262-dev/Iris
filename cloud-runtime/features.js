@@ -106,7 +106,7 @@ export function makeFeatures() {
         if(name==='versao')return '🌸 Íris Cloud 5.0 — jogos persistentes, mídia e perfis, sem IA externa.';
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Comandos e respostas de jogos ativos.';
-        if (name === 'diagnostico') { const d=runtimeStatus(); return '⚙️ Íris Cloud\nWhatsApp: '+d.whatsapp+'\nBanco: '+d.storage+'\nFila de mídia: '+d.media+'\nFila de comandos: '+d.commands+'\nProcessados: '+d.processed+' | Erros: '+d.errors+' | Lentos: '+d.slow+' | Descartados por limite: '+d.dropped+'\nMemória: '+Math.round(process.memoryUsage().rss/1048576)+' MB\nTempo online: '+Math.floor(process.uptime()/60)+' min'; }
+        if (name === 'diagnostico') { const d=runtimeStatus(); return '⚙️ Íris Cloud\nWhatsApp: '+d.whatsapp+'\nBanco: '+d.storage+'\nFila de mídia: '+d.media+'\nFila de comandos: '+d.commands+'\nProcessados: '+d.processed+' | Erros: '+d.errors+' | Lentos: '+d.slow+' | Descartados por limite: '+d.dropped+'\nMemória: '+Math.round(process.memoryUsage().rss/1048576)+' MB\nHeap: '+Math.round(process.memoryUsage().heapUsed/1048576)+' MB\nTempo online: '+Math.floor(process.uptime()/60)+' min\nNode: '+process.versions.node+'\nOperações: serialização por grupo; deduplicação persistente de mutações (até 10 min).'; }
         if(originalAdmin.includes(name))return originalModeration({name,arg,jid,sock,msg,owner});
         if (name === 'chat') return localReply(arg);
         if (name === 'xadrez') return chess({jid,actor,arg});
@@ -168,7 +168,7 @@ export function makeFeatures() {
             const category=games5.includes(name)?'jogos':name===collage5?'midia':['gincana','festival','criatividade','historiainterativa','comemoracao'].includes(name)?'fun':community5.includes(name)&&['painel','comandopermissao','auditoria'].includes(name)?null:'economia';
             const role=owner?'responsavel':category&&groupConfig(state).roles?.[category]&&groupConfig(state).roles[category]!=='todos'?await adminRole(sock,jid,msg,owner):'membro';if(category&&!await categoryAllowed(state,category,role))return 'Recurso limitado pelo responsável.';
             if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;
-            const result=games5.includes(name)?await game5({name,arg,state,id,owner}):name===collage5?await collageFeature5({state,id,arg,loadImage:loadPackImage}):name==='museu'&&arg.startsWith('doar ')?museumDonation({state,id,arg}):await communityFeature5({name,arg,state,id,owner,role,knownCommands:[...simple]});
+            const result=name==='revanche'&&['unobot','domino'].includes(arg)?await game4({name:arg,arg:'novo',state,id,owner,route:unoRoute}):name==='revanche'&&arg==='uno'?await megaGame({name:'uno',arg:'novo',state,id,owner}):games5.includes(name)?await game5({name,arg,state,id,owner}):name===collage5?await collageFeature5({state,id,arg,loadImage:loadPackImage}):name==='museu'&&arg.startsWith('doar ')?museumDonation({state,id,arg}):await communityFeature5({name,arg,state,id,owner,role,knownCommands:[...simple]});
             if(result?.changed)await save(s,state);return result?.text??null;
         }
         if(admin4.includes(name)){
