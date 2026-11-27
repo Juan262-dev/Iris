@@ -23,17 +23,21 @@ import { originalMedia,originalGames,originalAdmin,puzzle,makeOriginalAdmin } fr
 import { games5,game5,removeGames5 } from './games5.js';
 import { community5,communityFeature5,commandPermitted,progress5,museumDonation,removeCommunity5 } from './community5.js';
 import { media5,collage5,collageFeature5 } from './media5.js';
+import { infinityCommands,infinityGames,infinityMedia,infinityStudy,infinityMenu,infinityFeature,removeInfinity,pruneInfinity,artCard,artPhoto } from './infinity.js';
 import { context5,serialGroups,commandToken,alreadyApplied,markApplied,prune5 } from './transaction5.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto']);
-const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin]);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto',...infinityCommands]);
+const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin,'backupinfinity']);
 export function parseExtra(text, owner) {
     text=String(text||'').trim();
     const match = /^:(2048|8ball|abraço|[a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(text);
     if (!match) return null;
     const raw = match[1].toLowerCase();
-    const name = raw==='fig'?'s':raw==='abraço'?'abraco':raw;
+    let name = raw==='fig'?'s':raw==='abraço'?'abraco':raw;
+    // Correct only a small, safe read-only vocabulary; never auto-execute moderation or mutations.
+    if(!simple.has(name)){const aliases={meun:'menu',men:'menu',pign:'ping',stauts:'status',infnity:'infinity',mapainfinty:'mapainfinity',ajudainfnity:'ajudainfinity'};if(Object.hasOwn(aliases,name))name=aliases[name];}
+
     if (!simple.has(name) || (needsOwner.has(name) && !owner)) return null;
     return { name, arg: (match[2] || '').trim() };
 }
@@ -52,6 +56,7 @@ const hash = (key, value) => createHmac('sha256', key).update(value).digest('hex
 const validName = v => /^[a-z0-9_-]{1,20}$/i.test(v);
 export function menu(category='') {
     const sections = {
+        infinity:infinityMenu,
         geral:'📋 *GERAL*\n:ping — conexão\n:status — situação\n:grupo — participantes\n:regras — regras\n:diagnostico — estado do bot\n:versao | menuimagem | ajuda\n:menupremium | menutexto | ajudacartao comando\nAtalhos: :s, :ping, :menu, :fig',
         midia:'🖼️ *MÍDIA*\n:s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n:texto frase — figurinha de texto\n:s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n:slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n:som — MP4 com áudio (primeiros 10 s)\n:som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n:meme topo | rodapé — legenda de foto\n:imagem — responda a figurinha\n:audio | voz — responda a vídeo ou áudio\n:filtro cinza | sepia | nitido | invertido\n:semfundo | transparente #ffffff — fundo uniforme\n:autor nome — metadados da figurinha\n:trecho 30 — até 20 s a partir de 30 s\n:gif | comprimir — MP4\n:borda #ffffff | :pdf | :montagem — imagem\n:textanim frase — texto animado\n:renomear pacote | autor — figurinha\n:tts frase — voz sintetizada local\n:play piano | :youtube astronomia — pesquisa por tema\n:nasa lua | :pesquisarimagem girassol\n:pacotefig criar nome | adicionar | pegar 1\n:figtexto frase | qrcode texto simples | efeitoanimado brilho | gifvideo\n:animtexto frase | :fundopro | :formatoimagem png\n:colagem novo | adicionar | gerar | apagar\n:videofiltro cinza | :audioefeito eco',
         jogos:'🎮 *JOGOS*\n:velha | forca | quiz\n:resposta 1, 2 ou 3\n:numero — adivinhe o número\n:ppt pedra — pedra, papel ou tesoura\n:dado | moeda\n:xadrez novo medio — jogar contra o bot\n:xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n:xadrez ajuda — regras, temas e ranking\n:velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n:aventura novo — missão de exploração\n:quiz ciencia | geografia | geral\n:uno novo | entrar | pv | iniciar | mao — cartas no privado\n:naval desafio | aceitar — tiro a1\n:rpg classe explorador | mapa | explorar\n:campeonato entrar | ver\n:uno ranking | stats | gritar\n:damas desafio | aceitar — dama b3 a4\n:memoria novo | entrar — par 2 7\n:stop novo | entrar | resposta\n:detetive novo | entrar\n:coop novo | entrar | ajudar\n:encoded novo | :inverse novo — palavras\n:domino novo | entrar | pv | iniciar\n:unobot novo | mao | pos 1\n:torneiouno novo | entrar | iniciar\n:2048 novo | cima | direita\n:cruzadas novo | :quizmulti novo\n:ludo novo | entrar | dado | mover 1\n:sudoku novo facil|medio|dificil\n:termo novo | tentar amigo\n:revanche termo | :historicopartidas',
@@ -61,7 +66,7 @@ export function menu(category='') {
         admin:'🛡️ *RESPONSÁVEL*\n:on | off | abrir | fechar\n:definirregras texto\n:criar nome texto | remover nome\n:comandos | usar nome\n:boasvindas on | off\n:mensagembemvindo texto\n:avisogrupo texto\n:enquete pergunta | opção 1 | opção 2\n:votar 1 | votos | encerrarenquete\n:agenda 08:00 22:00 | off\n:advertir codigo motivo | advertencias codigo\n:prefixo\n:backup | sugestoes\n:kick @participante | :promote @participante | :demote @participante\nConfirme a operação com o mesmo comando seguido de confirmar.\nTodos: :sugestao texto\n:configgrupo | :permissao jogos admin | :temagrupo oceano\n:avisoregistrar regras | :avisohistorico\n:salvarconfig | :restaurarconfig confirmar\n:painel | :comandopermissao comando admin | :auditoria'
     };
     const key=category.trim().toLowerCase();
-    const header='╭─ 🌸 *ÍRIS CLOUD*\n│ Legião Z • Cloud 5.0\n│ Sem IA externa\n╰──────────────';
+    const header='╭─ 🌸 *ÍRIS CLOUD*\n│ Legião Z • Cloud 6.0\n│ Sem IA externa\n╰──────────────';
     if(key && Object.hasOwn(sections,key))return header+'\n\n'+sections[key];
     if(key)return 'Categorias: '+Object.keys(sections).join(', ')+'. Use :menu categoria.';
     return header+'\n\n'+Object.values(sections).join('\n\n')+'\n\nAtalho: :menu jogos (ou outra categoria).';
@@ -89,7 +94,7 @@ export function makeFeatures() {
         const ctx=context5.getStore();
         if(ctx?.data?.s?.sessionId===s.sessionId){
             for(const [k,p] of Object.entries(state.players)){const old=ctx.before[k];if(!old||old[0]!==p.xp||old[1]!==p.coins||old[2]!==p.coop5)progress5(p);}
-            markApplied(state,ctx.token);prune5(state);
+            markApplied(state,ctx.token);prune5(state);pruneInfinity(state);
         }
         await request(s, 'POST', { session_id:s.sessionId, item_type:'auth', item_id:'snapshot',
             encrypted_payload:seal(state,s), updated_at:new Date().toISOString() });
@@ -101,14 +106,14 @@ export function makeFeatures() {
             const {state}=await readGroup(jid);const theme=groupConfig(state).theme;
             if(name==='ajudacartao')return helpCard(arg,theme);
             if(['fun','brincadeiras'].includes(arg.toLowerCase()))return await funMenu();
-            return premiumMenu(arg,theme,arg?menu(arg):'🌸 Íris Cloud 5.0 • :menu jogos | midia | economia | diversao | admin | geral. :menutexto para lista completa.');
+            return premiumMenu(arg,theme,arg?menu(arg):'🌸 Íris Cloud 6.0 • :menu jogos | midia | economia | diversao | admin | geral. :menutexto para lista completa.');
         }
-        if(name==='versao')return '🌸 Íris Cloud 5.0 — jogos persistentes, mídia e perfis, sem IA externa.';
+        if(name==='versao')return '🌸 Íris Cloud 6.0 Infinity — mundo, jogos cooperativos, estudos e estúdio local. :infinity';
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Comandos e respostas de jogos ativos.';
         if (name === 'diagnostico') { const d=runtimeStatus(); return '⚙️ Íris Cloud\nWhatsApp: '+d.whatsapp+'\nBanco: '+d.storage+'\nFila de mídia: '+d.media+'\nFila de comandos: '+d.commands+'\nProcessados: '+d.processed+' | Erros: '+d.errors+' | Lentos: '+d.slow+' | Descartados por limite: '+d.dropped+'\nMemória: '+Math.round(process.memoryUsage().rss/1048576)+' MB\nHeap: '+Math.round(process.memoryUsage().heapUsed/1048576)+' MB\nTempo online: '+Math.floor(process.uptime()/60)+' min\nNode: '+process.versions.node+'\nOperações: serialização por grupo; deduplicação persistente de mutações (até 10 min).'; }
         if(originalAdmin.includes(name))return originalModeration({name,arg,jid,sock,msg,owner});
-        if (name === 'chat') return localReply(arg);
+        if (name === 'chat') {const t=arg.toLowerCase().trim();if(/^(infinity|novidades|novos comandos|o que ha de novo)$/.test(t))return infinityMenu;return localReply(arg);}
         if (name === 'xadrez') return chess({jid,actor,arg});
         if (name === 'ia') return '🌸 IA externa desativada. Use :chat para diálogos locais.';
         if(['piada','curiosidade'].includes(name))return extras({name,arg,jid,actor});
@@ -134,12 +139,19 @@ export function makeFeatures() {
             return name === 'abrir' ? '🌸 Grupo aberto para mensagens.' : '🌸 Grupo restrito a administradores.';
         }
         if (name === 'menufun') return await funMenu();
-        if(media4.includes(name)||media5.includes(name)){
+        if(media4.includes(name)||media5.includes(name)||infinityMedia.includes(name)){
             if(!actor)return null;const {state}=await readGroup(jid);
             const role=groupConfig(state).roles?.midia&&groupConfig(state).roles.midia!=='todos'?await adminRole(sock,jid,msg,owner):owner?'responsavel':'membro';
             if(!await categoryAllowed(state,'midia',role))return 'Recurso limitado pelo responsável.';
             if(!strictGate(jid,actor,groupConfig(state).spam==='rigoroso'))return null;
             const key=jid+':'+actor,now=Date.now();if(now-(cooldown.get(key)||0)<10000)return 'Aguarde 10 segundos entre mídias.';cooldown.set(key,now);if(cooldown.size>1000)cooldown.delete(cooldown.keys().next().value);
+            if(infinityMedia.includes(name)){
+                try{if(name==='cartaoarte')return await artCard(arg);
+                if(name==='fotoarte')return await artPhoto(await loadPackImage(),arg);
+                if(name==='figurarte')return await professionalMedia(msg,'animtexto',arg);
+                if(name==='videoarte')return await professionalMedia(msg,'videofiltro',arg);}
+                catch{return 'Envie uma imagem própria autorizada ou use :cartaoarte texto.';}
+            }
             return media5.includes(name)?professionalMedia(msg,name,arg):newMedia(msg,name,arg);
         }
         if (name === 's' || name === 'figurinha' || name === 'slonga' || name === 'som' || name === 'texto' || name === 'meme' || converterNames.includes(name) || studioNames.includes(name) || media3Names.includes(name) || originalMedia.includes(name) || funMediaNames.includes(name)) {
@@ -164,6 +176,14 @@ export function makeFeatures() {
         const {s,state} = await readGroup(jid);
         const id = hash(s.key, jid + ':' + actor);
         const player = state.players[id];
+        if(infinityCommands.includes(name)){
+            const category=infinityGames.includes(name)||infinityStudy.includes(name)?'jogos':name==='backupinfinity'||name==='infinity'||name==='ajudainfinity'?null:'economia';
+            const required=category&&groupConfig(state).roles?.[category];
+            const role=owner?'responsavel':required&&required!=='todos'?await adminRole(sock,jid,msg,owner):'membro';
+            if(category&&!await categoryAllowed(state,category,role))return 'Recurso limitado pelo responsável.';
+            if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;
+            const result=await infinityFeature({name,arg,state,id,owner});if(result?.changed)await save(s,state);return result?.text??null;
+        }
         if(games5.includes(name)||community5.includes(name)||name===collage5){
             const category=games5.includes(name)?'jogos':name===collage5?'midia':['gincana','festival','criatividade','historiainterativa','comemoracao'].includes(name)?'fun':community5.includes(name)&&['painel','comandopermissao','auditoria'].includes(name)?null:'economia';
             const role=owner?'responsavel':category&&groupConfig(state).roles?.[category]&&groupConfig(state).roles[category]!=='todos'?await adminRole(sock,jid,msg,owner):'membro';if(category&&!await categoryAllowed(state,category,role))return 'Recurso limitado pelo responsável.';
@@ -240,7 +260,7 @@ export function makeFeatures() {
             return '🌸 Perfil virtual criado: '+displayName(state,id)+' | Código '+id.slice(0,6)+'. Nome de exibição e dados do jogo são guardados neste grupo. :nomeperfil para editar; :perfilvisual para ver; :sair para apagar.';
         }
         if (name === 'sair') {
-            { delete state.players[id]; removeMegaProfile(state,id); removeSocial(state,id); removeFun(state,id); removeGames4(state,id); removeGames5(state,id); removeCommunity5(state,id); if(state.legacyGames5)for(const k of Object.keys(state.legacyGames5))if(k==='grupo:'+id||k.startsWith('grupo:'+id+':'))delete state.legacyGames5[k]; if(state.tournament4?.ids?.includes(id)){if(state.megaGames?.uno?.tournament4)delete state.megaGames.uno;delete state.tournament4;} if(state.megaGames?.unoStats)delete state.megaGames.unoStats[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
+            { delete state.players[id]; removeMegaProfile(state,id); removeSocial(state,id); removeFun(state,id); removeGames4(state,id); removeGames5(state,id); removeCommunity5(state,id); removeInfinity(state,id); if(state.legacyGames5)for(const k of Object.keys(state.legacyGames5))if(k==='grupo:'+id||k.startsWith('grupo:'+id+':'))delete state.legacyGames5[k]; if(state.tournament4?.ids?.includes(id)){if(state.megaGames?.uno?.tournament4)delete state.megaGames.uno;delete state.tournament4;} if(state.megaGames?.unoStats)delete state.megaGames.unoStats[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
             return '🌸 Seu perfil virtual foi removido.';
         }
         if (name === 'saldo') return player ? '🌸 Saldo: ' + player.coins + ' moedas virtuais | XP: ' + player.xp : '🌸 Use :perfil para participar.';
@@ -311,7 +331,7 @@ export function makeFeatures() {
         if(welcomeCooldown.size>100)welcomeCooldown.delete(welcomeCooldown.keys().next().value);
         return action==='add'&&state.community?.welcomeText?'🌸 '+state.community.welcomeText:message;
     };
-    const readOnlyMedia=new Set(['s','figurinha','slonga','som','texto','meme','menufun',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5]);
+    const readOnlyMedia=new Set(['s','figurinha','slonga','som','texto','meme','menufun',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5,...infinityMedia]);
     async function execute(input,name,fn,readOnly=false){
         const {jid,actor,sock,msg,owner}=input;
         if(!jid)return null;
@@ -321,7 +341,7 @@ export function makeFeatures() {
             if(alreadyApplied(state,token))return null;
             const req=state.config5?.commands?.[name];
             const arg=input.command?.arg||input.arg||'';
-            const exitAllowed=['sair','apagar','off'].includes(arg)&&(['uno','domino','unobot','ludo','sudoku','termo','xadrez','fun','perfilpublico','pacotefig','colagem','festival'].includes(name));
+            const exitAllowed=['sair','apagar','off'].includes(arg)&&(['uno','domino','unobot','ludo','sudoku','termo','xadrez','fun','perfilpublico','pacotefig','colagem','festival','imobiliario','trilha','expedicao','reliquia','guilda','simulado','desafioestudo','festivalinfinity'].includes(name));
             if(req&&!exitAllowed&&!commandPermitted(state,name,await adminRole(sock,jid,msg,owner)))return input.shorthand?null:'Comando restrito pelo responsável.';
             const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));
             return context5.run({jid,data,token,before},fn);
