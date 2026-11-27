@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {stopGame,stopTick,removeStop} from './stopGame.js';
-import {makeStopTickets,parseStopPrivate,parseStopQuote,formatStopAnswers,stopPrompt} from './stopPrivate.js';
+import {makeStopTickets,parseStopPrivate,parseStopQuote,formatStopAnswers,stopPrompt,stopSelfRoutes,stopSelfRecipient,stopPrivateCandidate} from './stopPrivate.js';
 import {parseExtra} from './features.js';
 const a='a'.repeat(64),b='b'.repeat(64),c='c'.repeat(64),state={players:{[a]:{},[b]:{},[c]:{}},custom:{keep:true}};
 let now=Date.UTC(2026,10,27,10);
@@ -57,3 +57,20 @@ assert.equal(formatStopAnswers('Animal: Maria\nNome: Macaco\nFruta: Manga',categ
 const prompt=stopPrompt({round:1,letter:'m',categories});assert.match(prompt,/1\. Nome:/);assert.match(prompt,/Responda a ESTA mensagem/);assert.ok(!prompt.includes(first));
 forms.remove(first);assert.equal(forms.quoted('msg-one'),null);assert.equal(forms.quoted('msg-two').code,second);clock+=180001;assert.equal(forms.quoted('msg-two'),null);
 console.log('Iris: STOP quoted replies, multiline and numbered answers, message binding and expiry tests passed');
+
+const normalize=v=>typeof v==='string'&&/^\d+(?::\d+)?@(lid|s\.whatsapp\.net)$/.test(v)?v.replace(/:\d+(?=@)/,''):null;
+const own=stopSelfRoutes({id:'12345:4@s.whatsapp.net',lid:'45678@lid'},{id:'12345@s.whatsapp.net'},normalize);
+assert.deepEqual(own,['12345@s.whatsapp.net','45678@lid']);assert.equal(stopSelfRecipient(own),'12345@s.whatsapp.net');
+const selfTickets=makeStopTickets({clock:()=>100});
+const selfCode=selfTickets.issue({jid:'group-a',actor:'owner',recipient:own[0],owner:true});selfTickets.bind(selfCode,'self-form');
+const guestCode=selfTickets.issue({jid:'group-a',actor:'guest',recipient:'99999@s.whatsapp.net',owner:false});selfTickets.bind(guestCode,'guest-form');
+const cand=(jid,fromMe,stanzaId)=>stopPrivateCandidate({jid,fromMe,message:{extendedTextMessage:{text:'Maria\nMacaco\nManga',contextInfo:{stanzaId}}},plain:'',tickets:selfTickets,selfRoutes:own,normalize});
+assert.equal(cand(own[0],true,'self-form').code,selfCode);
+assert.equal(cand(own[1],true,'self-form').code,selfCode);
+assert.equal(cand('99999@s.whatsapp.net',true,'self-form'),null);
+assert.equal(cand('99999@s.whatsapp.net',false,'self-form'),null);
+assert.equal(cand(own[0],true,'guest-form'),null);
+assert.equal(cand(own[0],true,'unrelated-message'),null);
+assert.equal(cand('99999@s.whatsapp.net',false,'guest-form').code,guestCode);
+assert.equal(stopPrivateCandidate({jid:own[0],fromMe:true,message:{conversation:'✅ Resposta registrada no STOP.'},plain:'✅ Resposta registrada no STOP.',tickets:selfTickets,selfRoutes:own,normalize}),null);
+console.log('Iris: STOP verified self-chat forms and owner quote isolation tests passed');
