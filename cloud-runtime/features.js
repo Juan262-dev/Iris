@@ -106,7 +106,7 @@ export function makeFeatures() {
             const {state}=await readGroup(jid);const theme=groupConfig(state).theme;
             if(name==='ajudacartao')return helpCard(arg,theme);
             if(['fun','brincadeiras'].includes(arg.toLowerCase()))return await funMenu();
-            return premiumMenu(arg,theme,arg?menu(arg):'🌸 Íris Cloud 6.0 • :menu jogos | midia | economia | diversao | admin | geral. :menutexto para lista completa.');
+            return premiumMenu(arg,theme,arg?menu(arg):'🌸 Íris Cloud 6.0 • :infinity | :menu jogos | midia | economia | diversao | admin | geral. :menutexto para lista completa.');
         }
         if(name==='versao')return '🌸 Íris Cloud 6.0 Infinity — mundo, jogos cooperativos, estudos e estúdio local. :infinity';
         if (name === 'ping') return '🌸 Íris — online!';
@@ -180,8 +180,8 @@ export function makeFeatures() {
             const category=infinityGames.includes(name)||infinityStudy.includes(name)?'jogos':name==='backupinfinity'||name==='infinity'||name==='ajudainfinity'?null:'economia';
             const required=category&&groupConfig(state).roles?.[category];
             const role=owner?'responsavel':required&&required!=='todos'?await adminRole(sock,jid,msg,owner):'membro';
-            if(category&&!await categoryAllowed(state,category,role))return 'Recurso limitado pelo responsável.';
-            if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;
+            if(category&&arg!=='sair'&&!await categoryAllowed(state,category,role))return 'Recurso limitado pelo responsável.';
+            if(arg!=='sair'&&!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;
             const result=await infinityFeature({name,arg,state,id,owner});if(result?.changed)await save(s,state);return result?.text??null;
         }
         if(games5.includes(name)||community5.includes(name)||name===collage5){
