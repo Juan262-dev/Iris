@@ -12,7 +12,7 @@ async function picture(title,rows,caption){
     const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><rect width="'+w+'" height="'+h+'" rx="15" fill="#211a37"/><g font-family="sans-serif" fill="white"><text x="24" y="42" font-size="26">'+esc(title)+'</text>'+rows.map((r,i)=>'<text x="24" y="'+(83+i*50)+'" font-size="24">'+esc(r)+'</text>').join('')+'</g></svg>';
     return {image:await sharp(Buffer.from(svg)).png().toBuffer(),caption};
 }
-const cases=[{story:'O mapa da exposição desapareceu. A porta estava trancada, mas o mapa ficou entre dois livros.',answer:'biblioteca',opts:'biblioteca | jardim | cozinha'},{story:'O relógio da praça parou. A energia funciona, mas há uma engrenagem solta.',answer:'engrenagem',opts:'chuva | engrenagem | tinta'},{story:'Uma planta murchou mesmo com luz suficiente. A terra estava completamente seca.',answer:'agua',opts:'agua | pedra | vento'}];
+const cases=[{story:'O mapa da exposição desapareceu. A porta estava trancada, mas o mapa ficou entre dois livros.',answer:'biblioteca',opts:'biblioteca | jardim | cozinha'},{story:'O relógio da praça parou. A energia funciona, mas há uma engrenagem solta.',answer:'engrenagem',opts:'chuva | engrenagem | tinta'},{story:'Uma planta murchou mesmo com luz suficiente. A terra estava completamente seca.',answer:'agua',opts:'agua | pedra | vento'},{story:'O quadro desapareceu da parede, mas há uma etiqueta de restauração na sala.',answer:'atelie',opts:'atelie | jardim | porto'},{story:'A trilha termina junto à margem. Há marcas de remo no barco.',answer:'rio',opts:'rio | escola | mercado'},{story:'O bilhete tem desenhos de estrelas e coordenadas do céu.',answer:'observatorio',opts:'observatorio | cozinha | oficina'}];
 const words={a:['abelha','arara','abacate','amora','azul','amarelo'],b:['baleia','borboleta','banana','bergamota','branco','bege'],c:['cachorro','cavalo','caju','coco','cinza','creme'],m:['macaco','morcego','manga','maca','marrom','magenta']};
 const pieces=()=>Array.from({length:64},(_,i)=>((Math.floor(i/8)+i%8)%2===1)?(i<24?'b':i>=40?'r':''):'');
 const cell=t=>/^[a-h][1-8]$/.test(t)?(Number(t[1])-1)*8+t.charCodeAt(0)-97:-1;
@@ -56,10 +56,10 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(!g.ids.includes(id))return out(activeOnly?null:'Use :memoria entrar.');
         const grid=show=>[0,4,8].map(start=>Array.from({length:4},(_,j)=>{const i=start+j;return g.found.includes(i)||show.includes(i)?g.cards[i]:'['+(i+1)+']';}).join('     '));
         if(arg==='novo'||!arg||arg==='mesa')return out(await picture('MEMÓRIA',grid([]),'Envie par 2 7. :memoria entrar para jogar junto.'),arg==='novo');
-        const m=/^(\d{1,2}) (\d{1,2})$/.exec(arg);if(!m)return out('Use par 2 7.');
+        const m=/^(?:par )?(\d{1,2}) (\d{1,2})$/.exec(arg);if(!m)return out('Use par 2 7.');
         const a=Number(m[1])-1,b=Number(m[2])-1;
         if(a===b||a<0||b<0||a>11||b>11||g.found.includes(a)||g.found.includes(b))return out('Escolha duas posições ocultas diferentes.');
-        g.tries++;const match=g.cards[a]===g.cards[b];if(match)g.found.push(a,b);
+        g.expires=now+86400000;g.tries++;const match=g.cards[a]===g.cards[b];if(match)g.found.push(a,b);
         const complete=g.found.length===12;const result=await picture('MEMÓRIA',grid([a,b]),complete?'Todos os pares encontrados em '+g.tries+' tentativas!':match?'Par encontrado!':'Não formou par. As posições voltam a ficar ocultas na mesa.');
         if(complete){for(const k of g.ids)recordGame(state,'memoria',k,'c');delete db[name];}return out(result,true);
     }
@@ -68,7 +68,7 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(!g)return out('Use :detetive novo.');
         if(arg==='entrar'&&!g.ids.includes(id)&&g.ids.length<6){g.ids.push(id);return out('Você entrou na investigação.',true);}
         if(!g.ids.includes(id))return out(null);
-        if(arg.startsWith('resposta ')){if(arg.slice(9).normalize('NFD').replace(/\p{M}/gu,'')===cases[g.case].answer){recordGame(state,'detetive',id,'w');delete db[name];return out('🔎 Mistério resolvido por '+label(id)+'!',true);}return out('Ainda não. Reveja as pistas.');}
+        if(arg.startsWith('resposta ')){if(arg.slice(9).trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu,'')===cases[g.case].answer){recordGame(state,'detetive',id,'w');delete db[name];return out('🔎 Mistério resolvido por '+label(id)+'!',true);}return out('Ainda não. Reveja as pistas.');}
         return out(cases[g.case].story+'\n'+cases[g.case].opts);
     }
     if(name==='coop'){
@@ -91,7 +91,8 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
     if(!g.ids.includes(id)||!g.b)return out(activeOnly?null:'Aguardando participantes.');
     if(!arg||arg==='mesa')return out(await damasBoard(g,'Vez de '+label(g.ids[g.turn])));
     if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
-    const m=/^([a-h][1-8]) ([a-h][1-8])$/.exec(arg);
+    if(arg==='jogadas'){const cellName=i=>String.fromCharCode(97+i%8)+(Math.floor(i/8)+1);return out('Jogadas válidas: '+moves(g.b,g.turn===0?'b':'r',g.forced).map(v=>cellName(v.from)+' '+cellName(v.to)).join(' | '));}
+    const m=/^(?:dama )?([a-h][1-8]) ([a-h][1-8])$/.exec(arg);
     if(!m)return out('Use dama b3 a4.');
     const side=g.turn===0?'b':'r',from=cell(m[1]),to=cell(m[2]);
     const legal=moves(g.b,side,g.forced).find(v=>v.from===from&&v.to===to);
