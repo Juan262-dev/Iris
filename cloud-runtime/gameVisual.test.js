@@ -56,3 +56,30 @@ assert.equal((await go('outsider','pv','67890@s.whatsapp.net')).changed,false);
 await go(b,'pv','67890@s.whatsapp.net');const shot=await go(a,'a1');assert.equal(shot.text.unoDelivery.private.length,2);assert.equal((await sharp(shot.text.unoDelivery.public.image).metadata()).width,720);
 await go(a,'sair');assert.equal(st.megaGames.naval,undefined);
 console.log('Iris: phase 2 visual boards, hidden answers, fleet privacy and private opt-in tests passed');
+
+import {visualGameResponse} from './gameVisual.js';
+import {gameCatalog} from './gameHub.js';
+const samples={
+ quiz:'🧠 *Quiz Íris*\nQual é a capital do Ceará?\n1. Natal\n2. Fortaleza\n3. Recife\nEnvie resposta 1, 2 ou 3.',
+ quizmulti:'Qual é o planeta vermelho?\n1. Marte\n2. Vênus\n3. Mercúrio',
+ velha:'❌ │ 2 │ ⭕\n4 │ 5 │ 6\n7 │ 8 │ 9\nSua vez!',
+ velhadupla:'1 │ 2 │ 3\n4 │ ❌ │ 6\n7 │ 8 │ ⭕\nVez de Jogador 1',
+ forca:'_ A _ A _\nErros: 2/6 | Letras: A, T',
+ numero:'Maior! Restam 6 tentativas. Intervalo: 51–90.',
+ dado:'🎲 Resultado: 6',
+ moeda:'🪙 Cara — sem apostas.',
+ ppt:'Você: pedra | Íris: tesoura\nVocê venceu!',
+ imobiliario:'Jogador 1 • casa 3 • 4 pontos\nJogador 2 • casa 1 • 2 pontos\nPróximo: Jogador 2',
+};
+for(const [name,entry] of Object.entries(gameCatalog)){
+ const response=samples[name]||'Partida aberta. Use :'+name+' entrar.';
+ const result=await visualGameResponse(name,entry[0],response);
+ assert.equal((await sharp(result.image).metadata()).width,720,name);
+ assert.equal(result.caption,response,name);
+}
+const existing={image:Buffer.from('existing'),caption:'Tabuleiro'};
+assert.equal(await visualGameResponse('uno','UNO',existing),existing);
+assert.equal(await visualGameResponse('stop','STOP','📩 Formulário enviado.'),'📩 Formulário enviado.');
+assert.equal(await visualGameResponse('quiz','Quiz','Jogos limitados pelo responsável.'),'Jogos limitados pelo responsável.');
+assert.equal(await visualGameResponse('jogos','Central de jogos','x'.repeat(1001)),'x'.repeat(1001));
+console.log('Iris: all game catalog visual response coverage, public-only inputs, text fallbacks and media pass-through tests passed');
