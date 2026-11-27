@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
+import { unoPublic,unoPrivate,unoRecipients,validUnoRoute } from './unoVisual.js';
 export const gameNames=['uno','naval','rpg','campeonato'];
 const label=id=>'Jogador '+id.slice(0,6);
 const out=(text,changed=false)=>({text,changed});
@@ -28,7 +29,7 @@ export async function navalImage(g){
 }
 const classes={explorador:'Explorador',artista:'Artista',estudioso:'Estudioso'};
 const maps={vila:'Vila das Flores',bosque:'Bosque das Trilhas',arquivo:'Arquivo das Estrelas'};
-export async function megaGame({name,arg='',state,id,now=Date.now(),choose=randomInt,activeOnly=false,owner=false}){
+export async function megaGame({name,arg='',state,id,now=Date.now(),choose=randomInt,activeOnly=false,owner=false,route=null}){
     if(!gameNames.includes(name))return null;
     const m=state.megaGames??={};
     if(name==='uno'){
@@ -36,40 +37,63 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         if(activeOnly&&(!g?.started||g.ids[g.turn]!==id))return out(null);
         if(arg==='novo'){
             if(g)return out('Já existe uma mesa de UNO.');
-            m.uno={ids:[id],started:false,expires:now+600000};return out('🃏 UNO criado. Amigos: :uno entrar. Criador: :uno iniciar (2–6 jogadores). Variante simplificada: mão pública sob solicitação, sem apostas.',true);
+            m.uno={ids:[id],routes:{},started:false,expires:now+600000};
+            return out('🃏 UNO visual criado! Amigos: :uno entrar. Cada jogador (inclusive o criador) confirma :uno pv para autorizar receber suas cartas no privado. Criador: :uno iniciar (2–6 jogadores). Sem apostas.',true);
         }
         if(!g)return out(activeOnly?null:'Use :uno novo.');
         if(arg==='entrar'){
             if(g.started||g.ids.includes(id)||g.ids.length>=6)return out('Não é possível entrar.');
-            g.ids.push(id);return out(label(id)+' entrou. '+g.ids.length+'/6.',true);
+            g.ids.push(id);return out(label(id)+' entrou. '+g.ids.length+'/6. Confirme :uno pv para receber suas cartas no privado.',true);
         }
         if(!g.ids.includes(id))return out(activeOnly?null:'Você não participa desta mesa.');
-        if(arg==='sair'){if(g.started||g.ids[0]===id){delete m.uno;return out('Mesa encerrada.',true);}g.ids=g.ids.filter(k=>k!==id);return out('Você saiu.',true);}
+        g.routes??={};
+        const ready=()=>g.ids.every(k=>validUnoRoute(g.routes[k]))&&new Set(g.ids.map(k=>g.routes[k])).size===g.ids.length;
+        const pack=async(ids,notice='',publicBoard=true)=>{
+            const privateHands=[];
+            for(const k of unoRecipients(g,ids))privateHands.push(...await unoPrivate(g,k));
+            return {unoDelivery:{public:publicBoard?await unoPublic(g,(notice?notice+'\n':'')+unoBoard(g)):notice||null,private:privateHands}};
+        };
+        if(arg==='sair'){
+            if(g.started||g.ids[0]===id){delete m.uno;return out('Mesa encerrada. Autorização de envio privado removida.',true);}
+            g.ids=g.ids.filter(k=>k!==id);delete g.routes[id];return out('Você saiu e sua autorização foi removida.',true);
+        }
+        if(arg==='pv'){
+            if(!validUnoRoute(route))return out('Não consegui identificar seu contato com segurança. Nenhuma carta foi enviada.');
+            if(Object.entries(g.routes).some(([k,v])=>k!==id&&v===route))return out('Contato já associado a outro participante; não foi possível confirmar.');
+            g.routes[id]=route;
+            if(g.started)return out(await pack([id],'🃏 Sua mão será enviada apenas no privado.',false),true);
+            return out('🃏 '+label(id)+' autorizou receber as cartas no privado. '+Object.keys(g.routes).length+'/'+g.ids.length+' confirmados.',true);
+        }
         if(arg==='iniciar'){
             if(g.started||g.ids[0]!==id||g.ids.length<2)return out('Somente o criador inicia com 2 a 6 jogadores.');
+            if(!ready())return out('Todos os jogadores precisam confirmar :uno pv antes de iniciar.');
             g.started=true;g.deck=deck(choose);g.hands={};g.discard=[];g.turn=0;g.dir=1;g.expires=now+86400000;
             for(const k of g.ids){g.hands[k]=[];draw(g,k,7,choose);}
             const i=g.deck.findIndex(c=>/^[vagb]\d$/.test(c));const card=g.deck.splice(i,1)[0];g.discard=[card];g.color=card[0];
-            return out(unoBoard(g)+'\n:uno mao mostra suas cartas no grupo. Sem cartas secretas.',true);
+            return out(await pack(g.ids,'Partida iniciada! Cada jogador recebe 7 cartas no privado.'),true);
         }
-        if(!g.started)return out('Aguardando início.');
-        if(arg==='mao')return out('🃏 Suas cartas (visíveis no grupo): '+g.hands[id].map(c=>c+' ('+cardLabel(c)+')').join(', '));
-        if(!arg||arg==='mesa')return out(unoBoard(g));
+        if(!g.started)return out('Aguardando início. Confirme :uno pv.');
+        if(arg==='mao'){
+            if(!validUnoRoute(g.routes[id]))return out('Confirme :uno pv para receber sua mão no privado.');
+            return out(await pack([id],'🃏 Sua mão será enviada apenas no privado.',false));
+        }
+        if(!arg||arg==='mesa')return out(await unoPublic(g,unoBoard(g)));
+        if(!ready())return out(activeOnly?null:'Todos precisam confirmar :uno pv para continuar esta partida.');
         if(g.ids[g.turn]!==id)return out(activeOnly?null:'Aguarde sua vez.');
-        if(arg==='comprar'){draw(g,id,1,choose);next(g);g.expires=now+86400000;return out(unoBoard(g),true);}
+        if(arg==='comprar'){draw(g,id,1,choose);next(g);g.expires=now+86400000;return out(await pack([id],'Carta comprada.'),true);}
         const match=/^(?:jogar )?([vagb][0-9srd]|c)(?: (vermelho|amarelo|verde|azul))?$/.exec(arg);
         if(!match)return out('Use carta v5, carta c azul ou comprar carta.');
         const card=match[1],hand=g.hands[id],top=g.discard.at(-1);
         const chosenColor=Object.keys(colorNames).find(k=>colorNames[k]===match[2]);
         if(!hand.includes(card)||card==='c'&&!chosenColor||card!=='c'&&(card[0]!==g.color&&card.slice(1)!==top.slice(1)))return out('Carta inválida para esta jogada.');
         hand.splice(hand.indexOf(card),1);g.discard.push(card);g.color=card==='c'?chosenColor:card[0];
-        if(!hand.length){delete m.uno;return out('🏆 '+label(id)+' venceu o UNO!',true);}
-        const kind=card.slice(1);
+        if(!hand.length){const result=await unoPublic(g,'🏆 '+label(id)+' venceu o UNO!');delete m.uno;return out(result,true);}
+        const updated=[id],kind=card.slice(1);
         if(kind==='r'){g.dir=-g.dir;next(g,g.ids.length===2?2:1);}
         else if(kind==='s')next(g,2);
-        else if(kind==='d'){next(g);draw(g,g.ids[g.turn],2,choose);next(g);}
+        else if(kind==='d'){next(g);const other=g.ids[g.turn];draw(g,other,2,choose);updated.push(other);next(g);}
         else next(g);
-        g.expires=now+86400000;return out((hand.length===1?'🃏 UNO! '+label(id)+' tem uma carta.\n':'')+unoBoard(g),true);
+        g.expires=now+86400000;return out(await pack(updated,hand.length===1?'🃏 UNO! '+label(id)+' tem uma carta.':''),true);
     }
     if(name==='naval'){
         let g=m.naval;if(g&&g.expires<=now){delete m.naval;g=null;}
