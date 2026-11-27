@@ -33,6 +33,9 @@ node --check cloud-runtime/games3.js
 node --check cloud-runtime/social3.js
 node --check cloud-runtime/media3.js
 node cloud-runtime/v3.test.js
+node --check cloud-runtime/stopGame.js
+node --check cloud-runtime/stopPrivate.js
+node cloud-runtime/stopGame.test.js
 node --check cloud-runtime/originalCompat.js
 node --check cloud-runtime/ttsWorker.js
 node cloud-runtime/originalCompat.test.js
