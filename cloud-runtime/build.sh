@@ -68,6 +68,8 @@ node cloud-runtime/infinity.test.js
 node --check cloud-runtime/world.js
 node --check cloud-runtime/world-web.js
 node cloud-runtime/world.test.js
+node --check cloud-runtime/worldPersistent.js
+node cloud-runtime/worldPersistent.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
