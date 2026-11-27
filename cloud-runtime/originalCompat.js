@@ -1,3 +1,4 @@
+import { recordGame } from './profileCard.js';
 import { randomInt } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -97,8 +98,8 @@ export function puzzle({name,arg='',state,id,now=Date.now(),choose=randomInt}){
     if(!g)return {text:'Use :'+name+' novo.'};
     if(!arg||arg==='pista')return {text:'🧩 '+g.clue};
     if(!arg.startsWith('resposta '))return {text:'Use :'+name+' resposta palavra.'};
-    if(normalize(arg.slice(9))===g.word){delete games[name];return {text:'✅ Palavra correta! Desafio concluído.',changed:true};}
-    if(++g.tries>=12){delete games[name];return {text:'Limite de tentativas atingido. Inicie outro desafio.',changed:true};}
+    if(normalize(arg.slice(9))===g.word){recordGame(state,name,id,'w');delete games[name];return {text:'✅ Palavra correta! Desafio concluído.',changed:true};}
+    if(++g.tries>=12){recordGame(state,name,id,'l');delete games[name];return {text:'Limite de tentativas atingido. Inicie outro desafio.',changed:true};}
     return {text:'Ainda não. Tente novamente.',changed:true};
 }
 function ids(p){return [...new Set([p?.id,p?.lid,p?.phoneNumber].map(unoRoute).filter(Boolean))];}
