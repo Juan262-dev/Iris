@@ -1,7 +1,7 @@
 import { startHeadlessBot } from './bot.js';
 import { runtimeStatus,setRuntime } from './runtimeStatus.js';
 const life={stopping:false};let stopping=false;
-function report(){if(process.connected)try{process.send({type:'status',status:runtimeStatus().whatsapp,storage:runtimeStatus().storage});}catch{}}
+function report(){if(process.connected)try{process.send({type:'status',status:runtimeStatus().whatsapp,storage:runtimeStatus().storage,memory:Math.round(process.memoryUsage().rss/1048576)});}catch{}}
 const tick=setInterval(report,2000);tick.unref();
 const startup=startHeadlessBot(0,life);
 async function stop(){if(stopping)return;stopping=true;life.stopping=true;try{await startup;await life.stop?.();}catch{console.error('Iris worker: graceful shutdown failed');}finally{clearInterval(tick);process.exit(0);}}
