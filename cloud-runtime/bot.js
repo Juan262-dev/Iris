@@ -10,6 +10,7 @@ import { makeLimiter } from './extras.js';
 import { isChessMove } from './persistentChess.js';
 import { shortActivity } from './community.js';
 import { megaShort } from './megaGames.js';
+import { unoRoute,dispatchUno } from './unoVisual.js';
 import { studioCommand,studioNames } from './studio.js';
 import { convertMedia,converterNames } from './converters.js';
 import { setRuntime,makeJobQueue,reconnectDelay } from './runtimeStatus.js';
@@ -118,12 +119,28 @@ export async function startHeadlessBot(restartCount = 0) {
     });
     async function deliver(jid,response,msg){
         if(closed||!response||!chats.has(jid))return;
+        if(response.unoDelivery){
+            const payload=response.unoDelivery;
+            const allowed=new Set();
+            try{
+                const meta=await sock.groupMetadata(jid);
+                for(const p of meta.participants||[]){
+                    for(const v of [p.id,p.lid,p.phoneNumber]){const route=unoRoute(v);if(route)allowed.add(route);}
+                }
+            }catch{console.error('Iris: UNO group membership verification failed');}
+            const failed=await dispatchUno({payload,allowed,active:()=>!closed&&chats.has(jid),send:(to,content)=>sock.sendMessage(to,content)});
+            if(closed||!chats.has(jid))return;
+            const publicPart=payload.public;
+            if(publicPart)await sock.sendMessage(jid,typeof publicPart==='string'?{text:publicPart}:publicPart,{quoted:msg});
+            if(failed)await sock.sendMessage(jid,{text:'🌸 Algumas mãos não puderam ser enviadas no privado. O jogador pode usar :uno pv ou :uno mao. Nenhuma carta será revelada no grupo.'},{quoted:msg});
+            return;
+        }
         if(response.soundSticker){
             try{await sendSoundSticker(sock,baileys,jid,response.soundSticker,msg);}
             catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use :s.'},{quoted:msg});}
         }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
     }
-    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg)});
+    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg),unoRoute:extra.name==='uno'&&extra.arg==='pv'?unoRoute(owner?sock.user?.id:msg.key?.participant):null});
     const fresh=msg=>{
         const ts=Number(msg.messageTimestamp||0);
         return Number.isFinite(ts)&&Math.abs(Date.now()/1000-ts)<=120;
