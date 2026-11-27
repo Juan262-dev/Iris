@@ -19,7 +19,7 @@ local({...base,name:'forca',arg:'novo'});const word=memory.get('g:'+a+':forca').
 const guesses=new Map(),extra=makeExtras(guesses),num={jid:'g',actor:a,name:'numero'};extra({...num,arg:'novo'});const answer=guesses.get('g:'+a).answer,wrong=answer===1?2:1;extra({...num,arg:String(wrong)});assert.match(extra({...num,arg:String(wrong)}),/já tentado/);assert.equal(guesses.get('g:'+a).tries,1);
 await game3({name:'memoria',arg:'novo',state,id:a,choose:()=>0});assert.equal((await game3({name:'memoria',arg:'par 1 2',state,id:a})).changed,true);
 await game4({name:'cruzadas',arg:'novo',state,id:a});assert.equal((await game4({name:'cruzadas',arg:'resposta 1 sol',state,id:b})).changed,false);
-await game5({name:'sudoku',arg:'novo facil',state,id:a,choose:()=>0});assert.match((await game5({name:'sudoku',arg:'dica',state,id:a})).text,/candidatos/);
+await game5({name:'sudoku',arg:'novo facil',state,id:a,choose:()=>0});assert.match((await game5({name:'sudoku',arg:'dica',state,id:a})).text.caption,/candidatos/);
 assert.equal(state.players[a].worldPosition,9);assert.equal(state.players[a].livingWorld.task,'treinar');assert.equal(state.custom.old,true);
 const http=readFileSync(new URL('../lib/Initialize/cloudPreview.js',import.meta.url),'utf8');assert.ok(http.includes('writeHead(410'));assert.ok(!http.includes('makeWorldHttp'));
 console.log('Iris: Game Center catalog, retired RPG isolation, game guides, rankings and gameplay improvements tests passed');
