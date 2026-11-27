@@ -34,7 +34,6 @@ export function gameStats(state,id){
     for(const [game,s] of Object.entries(p?.cardStats||{}))if(Object.hasOwn(gameLabels,game))r[game]={w:n(s.w),l:n(s.l),d:n(s.d),c:n(s.c),points:n(s.points)};
     for(const [game,value] of Object.entries(p?.games4||{}))if(Object.hasOwn(gameLabels,game)&&!r[game])r[game]={w:0,l:0,d:0,c:n(value),points:0};
     for(const [game,v] of Object.entries(p?.stats5||{}))if(Object.hasOwn(gameLabels,game))r[game]={w:n(v.wins),l:n(v.losses),d:n(v.draws),c:n(v.completed),points:0};
-    for(const v of p?.matchHistory5||[])if(['unobot','domino'].includes(v.game)){const s=r[v.game]??={w:0,l:0,d:0,c:0,points:0};if(v.result==='vitória')s.w++;else if(v.result==='derrota')s.l++;else if(v.result==='empate')s.d++;}
     const u=state.megaGames?.unoStats?.[id],c=state.chess?.stats?.[id];
     if(u)r.uno={w:n(u.wins),l:n(u.losses),d:0,c:0,points:0};
     if(c)r.xadrez={w:n(c.w),l:n(c.l),d:n(c.d),c:0,points:0};
