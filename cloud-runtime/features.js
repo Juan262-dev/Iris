@@ -25,6 +25,7 @@ import { community5,communityFeature5,commandPermitted,progress5,museumDonation,
 import { media5,collage5,collageFeature5 } from './media5.js';
 import { infinityCommands,infinityGames,infinityMedia,infinityStudy,infinityMenu,infinityFeature,removeInfinity,pruneInfinity,artCard,artPhoto } from './infinity.js';
 import { worldView,validWorldAction } from './world.js';
+import {settleLiving} from './worldLiving.js';
 import { context5,serialGroups,commandToken,alreadyApplied,markApplied,prune5 } from './transaction5.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
@@ -355,7 +356,7 @@ export function makeFeatures() {
     wrapped.world=({jid,actor},command=null)=>groupSerial(jid,async()=>{
         const data=await readGroupRaw(jid),{state,s}=data,id=hash(s.key,jid+':'+actor);
         if(!state.players[id]||!await categoryAllowed(state,'economia','membro')||!commandPermitted(state,'world','membro'))return null;
-        if(!command)return {view:worldView(state,id)};
+        if(!command){const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));return context5.run({jid,data,token:null,before},async()=>{const r=commandPermitted(state,'offline','membro')?settleLiving(state.players[id]):{changed:false};if(r.changed)await save(s,state);return {view:worldView(state,id),...(r.changed?{message:r.text}:{})};});}
         if(!validWorldAction(command.name,command.arg)||!commandPermitted(state,command.name,'membro'))return {view:worldView(state,id),message:'Comando indisponível ou limitado pelo responsável.'};
         if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return {view:worldView(state,id),message:'Aguarde antes de executar outro comando.'};
         const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));
