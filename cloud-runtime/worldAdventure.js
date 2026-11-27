@@ -15,6 +15,7 @@ const price=(k,t)=>Math.max(1,gear[k].price+(hash(k,day(t))%7)-3);
 const init=()=>({class:'explorador',area:0,hp:105,energy:130,bag:{},equip:{},day:'',seen:[],hour:-1,quest:0,questOn:false,points:0,wins:0,log:[]});
 function stats(p,a){const c=classes[a.class]||classes.explorador;const lv=clamp(1+Math.floor((p.xp||0)/10),1,50),bonus={hp:0,atk:0,def:0,energy:0};for(const k of Object.values(a.equip||{})){if(!Object.hasOwn(gear,k)||!(a.bag?.[k]>0))continue;for(const n of Object.keys(bonus))bonus[n]+=gear[k][n]||0;}return {level:lv,hp:c.hp+2*(lv-1)+bonus.hp,energy:c.energy+bonus.energy,atk:c.atk+Math.floor(lv/2)+bonus.atk,def:c.def+Math.floor(lv/3)+bonus.def,luck:a.class==='explorador'?12:8,speed:a.class==='arqueiro'?12:8};}
 function normalize(p,now){const a=p.adventureWorld??=init();const s=stats(p,a),h=Math.floor(now/3600000);a.hp=clamp(a.hp,0,s.hp);a.energy=clamp(a.energy,0,s.energy);if(a.hour!==h){const elapsed=a.hour<0?0:clamp(h-a.hour,0,24);a.energy=clamp(a.energy+elapsed*15,0,s.energy);a.hour=h;}if(a.day!==date(now)){a.day=date(now);a.seen=[];a.dailyDone=false;a.guildDone=false;a.eventDay='';a.encounter=null;}return a;}
+export function prepareLivingAdventure(p,now=Date.now()){const a=normalize(p,now);return {a,stats:stats(p,a)};}
 function add(a,k,n){a.bag[k]=clamp((a.bag[k]||0)+n,0,999);if(!a.bag[k])delete a.bag[k];}
 function reward(p,n){p.xp=clamp((p.xp||0)+n,0,1000000);}
 function coin(p,n){p.coins=clamp((p.coins||0)+n,0,1000000);}
