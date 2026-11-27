@@ -61,7 +61,7 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(!g)return out('Use :detetive novo.');
         if(arg==='entrar'&&!g.ids.includes(id)&&g.ids.length<6){g.ids.push(id);return out('Você entrou na investigação.',true);}
         if(!g.ids.includes(id))return out(null);
-        if(arg.startsWith('resposta ')){if(arg.slice(9).trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu,'')===cases[g.case].answer){recordGame(state,'detetive',id,'w');delete db[name];return out('🔎 Mistério resolvido por '+label(id)+'!',true);}return out('Ainda não. Reveja as pistas.');}
+        if(arg.startsWith('resposta ')||cases[g.case].opts.split(' | ').includes(arg.normalize('NFD').replace(/\p{M}/gu,''))){if((arg.startsWith('resposta ')?arg.slice(9):arg).trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu,'')===cases[g.case].answer){recordGame(state,'detetive',id,'w');delete db[name];return out('🔎 Mistério resolvido por '+label(id)+'!',true);}return out('Ainda não. Reveja as pistas.');}
         return out(cases[g.case].story+'\n'+cases[g.case].opts);
     }
     if(name==='coop'){
