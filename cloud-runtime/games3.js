@@ -1,3 +1,4 @@
+import {memoryBoard} from './gameVisual.js';
 import {stopGame} from './stopGame.js';
 import { recordGame } from './profileCard.js';
 import { randomInt } from 'node:crypto';
@@ -55,12 +56,12 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(arg==='entrar'&&!g.ids.includes(id)&&g.ids.length<6){g.ids.push(id);return out('Entrou no jogo cooperativo.',true);}
         if(!g.ids.includes(id))return out(activeOnly?null:'Use :memoria entrar.');
         const grid=show=>[0,4,8].map(start=>Array.from({length:4},(_,j)=>{const i=start+j;return g.found.includes(i)||show.includes(i)?g.cards[i]:'['+(i+1)+']';}).join('     '));
-        if(arg==='novo'||!arg||arg==='mesa')return out(await picture('MEMÓRIA',grid([]),'Envie par 2 7. :memoria entrar para jogar junto.'),arg==='novo');
+        if(arg==='novo'||!arg||arg==='mesa'||arg==='m')return out(await memoryBoard(g,[],'Envie :memoria 2 7. :memoria entrar para jogar junto.'),arg==='novo');
         const m=/^(?:par )?(\d{1,2}) (\d{1,2})$/.exec(arg);if(!m)return out('Use par 2 7.');
         const a=Number(m[1])-1,b=Number(m[2])-1;
         if(a===b||a<0||b<0||a>11||b>11||g.found.includes(a)||g.found.includes(b))return out('Escolha duas posições ocultas diferentes.');
         g.expires=now+86400000;g.tries++;const match=g.cards[a]===g.cards[b];if(match)g.found.push(a,b);
-        const complete=g.found.length===12;const result=await picture('MEMÓRIA',grid([a,b]),complete?'Todos os pares encontrados em '+g.tries+' tentativas!':match?'Par encontrado!':'Não formou par. As posições voltam a ficar ocultas na mesa.');
+        const complete=g.found.length===12;const result=await memoryBoard(g,[a,b],complete?'Todos os pares encontrados em '+g.tries+' tentativas!':match?'Par encontrado!':'Não formou par. As posições voltam a ficar ocultas na mesa.');
         if(complete){for(const k of g.ids)recordGame(state,'memoria',k,'c');delete db[name];}return out(result,true);
     }
     if(name==='detetive'){
