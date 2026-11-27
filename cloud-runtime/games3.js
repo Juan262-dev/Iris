@@ -1,3 +1,4 @@
+import { recordGame } from './profileCard.js';
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
 export const games3=['memoria','stop','detetive','damas','coop'];
@@ -58,14 +59,14 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(a===b||a<0||b<0||a>11||b>11||g.found.includes(a)||g.found.includes(b))return out('Escolha duas posições ocultas diferentes.');
         g.tries++;const match=g.cards[a]===g.cards[b];if(match)g.found.push(a,b);
         const complete=g.found.length===12;const result=await picture('MEMÓRIA',grid([a,b]),complete?'Todos os pares encontrados em '+g.tries+' tentativas!':match?'Par encontrado!':'Não formou par. As posições voltam a ficar ocultas na mesa.');
-        if(complete)delete db[name];return out(result,true);
+        if(complete){for(const k of g.ids)recordGame(state,'memoria',k,'c');delete db[name];}return out(result,true);
     }
     if(name==='detetive'){
         if(arg==='novo'){if(g)return out('Caso já aberto.');g=db[name]={ids:[id],case:choose(cases.length),expires:now+3600000};return out('🔎 '+cases[g.case].story+'\nOpções: '+cases[g.case].opts+'\nUse :detetive resposta palavra.',true);}
         if(!g)return out('Use :detetive novo.');
         if(arg==='entrar'&&!g.ids.includes(id)&&g.ids.length<6){g.ids.push(id);return out('Você entrou na investigação.',true);}
         if(!g.ids.includes(id))return out(null);
-        if(arg.startsWith('resposta ')){if(arg.slice(9).normalize('NFD').replace(/\p{M}/gu,'')===cases[g.case].answer){delete db[name];return out('🔎 Mistério resolvido por '+label(id)+'!',true);}return out('Ainda não. Reveja as pistas.');}
+        if(arg.startsWith('resposta ')){if(arg.slice(9).normalize('NFD').replace(/\p{M}/gu,'')===cases[g.case].answer){recordGame(state,'detetive',id,'w');delete db[name];return out('🔎 Mistério resolvido por '+label(id)+'!',true);}return out('Ainda não. Reveja as pistas.');}
         return out(cases[g.case].story+'\n'+cases[g.case].opts);
     }
     if(name==='stop'){
@@ -78,7 +79,7 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
             const a=arg.slice(9).split('|').map(s=>s.trim().normalize('NFD').replace(/\p{M}/gu,'').toLowerCase());
             if(a.length!==3)return out('Envie três palavras separadas por |.');
             const list=words[g.letter],score=a.reduce((n,v,i)=>n+(list.slice(i*2,i*2+2).includes(v)?10:0),0);
-            g.answers[id]=score;return out('Resposta registrada: '+score+'/30. Use :stop placar.',true);
+            g.answers[id]=score;recordGame(state,'stop',id,'c',score);return out('Resposta registrada: '+score+'/30. Use :stop placar.',true);
         }
         if(arg==='encerrar'&&g.ids[0]===id){const scores=Object.entries(g.answers).sort((a,b)=>b[1]-a[1]).map(([k,v])=>label(k)+': '+v);delete db[name];return out('🏁 '+(scores.join('\n')||'Sem respostas.'),true);}
         return out('Letra '+g.letter.toUpperCase()+'\n'+Object.entries(g.answers).map(([k,v])=>label(k)+': '+v).join('\n'));
@@ -88,7 +89,7 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(!g)return out('Use :coop novo.');
         if(arg==='entrar'&&!g.ids.includes(id)&&g.ids.length<6){g.ids.push(id);return out('Entrou na equipe.',true);}
         if(!g.ids.includes(id))return out(null);
-        if(arg==='ajudar'){if(g.done.includes(id))return out('Você já contribuiu.');g.done.push(id);if(g.done.length>=2&&g.done.length===g.ids.length){for(const k of g.ids){const p=state.players[k];if(p){p.coins=Math.min(1000000,p.coins+8);p.xp+=2;}}delete db[name];return out('🌿 Missão concluída! Perfis cadastrados receberam 8 moedas virtuais e 2 XP.',true);}return out('Contribuição registrada: '+g.done.length+'/'+g.ids.length+'.',true);}
+        if(arg==='ajudar'){if(g.done.includes(id))return out('Você já contribuiu.');g.done.push(id);if(g.done.length>=2&&g.done.length===g.ids.length){for(const k of g.ids){const p=state.players[k];if(p){p.coins=Math.min(1000000,p.coins+8);p.xp+=2;recordGame(state,'coop',k,'c');}}delete db[name];return out('🌿 Missão concluída! Perfis cadastrados receberam 8 moedas virtuais e 2 XP.',true);}return out('Contribuição registrada: '+g.done.length+'/'+g.ids.length+'.',true);}
         return out('Equipe: '+g.ids.length+' | contribuições: '+g.done.length);
     }
     if(arg==='desafio'){
@@ -115,7 +116,7 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
     const winner=!again&&!moves(g.b,g.turn===0?'b':'r').length;
     g.expires=now+86400000;
     const result=await damasBoard(g,winner?'🏆 '+label(id)+' venceu!':(again?'Continue a captura. ':'')+'Vez de '+label(g.ids[g.turn]));
-    if(winner)delete db[name];return out(result,true);
+    if(winner){for(const k of g.ids)recordGame(state,'damas',k,k===id?'w':'l');delete db[name];}return out(result,true);
 }
 export function short3(text){
     const t=String(text||'').trim().toLowerCase(),p=/^par (\d{1,2} \d{1,2})$/.exec(t),d=/^dama ([a-h][1-8] [a-h][1-8])$/.exec(t);
