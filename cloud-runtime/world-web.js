@@ -40,7 +40,7 @@ api('state');
 const origin='https://iris-cloud-oqit.onrender.com';
 export const worldUrl=origin+'/world';
 const cookie=(session='',maxAge=0)=>'iris_world='+session+'; Path=/world; HttpOnly; Secure; SameSite=Strict; Max-Age='+maxAge;
-const sessionOf=req=>/(?:^|;\\s*)iris_world=([a-f0-9]{48})(?:;|$)/.exec(req.headers.cookie||'')?.[1];
+const sessionOf=req=>/(?:^|;\s*)iris_world=([a-f0-9]{48})(?:;|$)/.exec(req.headers.cookie||'')?.[1];
 async function body(req){let n=0;const chunks=[];for await(const c of req){n+=c.length;if(n>2048)throw Error('size');chunks.push(c);}const x=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');if(!x||typeof x!=='object'||Array.isArray(x))throw Error('body');return x;}
 export function makeWorldHttp(supervisor){
  let pending=0;
@@ -49,8 +49,8 @@ export function makeWorldHttp(supervisor){
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
   const json=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));return true;};
   if((req.method==='GET'||req.method==='HEAD')&&(path==='/world'||path==='/world/'||path==='/world/app.js')){const script=path.endsWith('.js');res.writeHead(200,{'Content-Type':script?'text/javascript; charset=utf-8':'text/html; charset=utf-8'});res.end(req.method==='HEAD'?undefined:script?js:html);return true;}
-  const op=/^\\/world\\/api\\/(login|state|action|logout)$/.exec(path)?.[1];if(!op)return json(404,{});
-  if(req.method!=='POST'||req.headers.origin!==origin||!/^application\\/json(?:;|$)/i.test(req.headers['content-type']||''))return json(403,{});
+  const op=/^\/world\/api\/(login|state|action|logout)$/.exec(path)?.[1];if(!op)return json(404,{});
+  if(req.method!=='POST'||req.headers.origin!==origin||!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))return json(403,{});
   if(pending>=24)return json(503,{});
   pending++;
   try{let input;try{input=await body(req);}catch{return json(400,{});}
