@@ -22,9 +22,10 @@ const mem=state.games3.memoria;const i=mem.cards.findIndex((v,i)=>i>0&&v===mem.c
 assert.equal((await g('memoria','1 '+(i+1),b)).changed,true);
 assert.equal(mem.found.length,2);
 await g('detetive','novo');assert.equal((await g('detetive','resposta biblioteca')).changed,true);
-await g('stop','novo');await g('stop','entrar',b);
-assert.match((await g('stop','resposta abelha | abacate | azul',b)).text,/30\/30/);
+await g('stop','novo rapido 1 90');await g('stop','entrar',b);await g('stop','iniciar');
+assert.match((await g('stop','resposta abelha | abacate | azul',b)).text,/Resposta registrada/);
 assert.equal((await g('stop','resposta abelha | abacate | azul',b)).changed,false);
+assert.match((await g('stop','resposta arara | amora | amarelo',a)).text,/30 pts/);
 await g('coop','novo');await g('coop','entrar',b);await g('coop','ajudar');
 assert.match((await g('coop','ajudar',b)).text,/concluída/);
 await g('damas','desafio');assert.ok((await g('damas','aceitar',b)).text.image);
