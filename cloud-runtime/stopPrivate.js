@@ -34,3 +34,18 @@ export function formatStopAnswers(raw,categories){
 export function stopPrompt(info){
  return '📝 *STOP • Rodada '+info.round+'*\nLetra: *'+info.letter.toUpperCase()+'*\n\n'+info.categories.map((c,i)=>(i+1)+'. '+c+':').join('\n')+'\n\nResponda a ESTA mensagem (arraste para o lado). Escreva uma resposta por linha, na ordem acima. Use - se não souber. Não precisa digitar comando nem código.';
 }
+
+export function stopSelfRoutes(user,me,normalize){
+ return [...new Set([user?.id,user?.lid,me?.id,me?.lid].map(normalize).filter(Boolean))];
+}
+export function stopSelfRecipient(routes){return routes.find(r=>r.endsWith('@s.whatsapp.net'))||routes[0]||null;}
+export function stopPrivateCandidate({fromMe,jid,message,plain,tickets,selfRoutes,normalize}){
+ const route=normalize(jid);if(!route)return null;
+ const quote=parseStopQuote(message),match=quote?tickets.quoted(quote.messageId):null;
+ if(fromMe){
+  if(!selfRoutes.includes(route)||!match?.ticket.owner||!selfRoutes.includes(match.ticket.recipient))return null;
+  return {code:match.code,answer:quote.answer,quoted:true};
+ }
+ if(match){if(match.ticket.owner)return null;return {code:match.code,answer:quote.answer,quoted:true};}
+ const old=parseStopPrivate(plain);return old?{...old,quoted:false}:null;
+}
