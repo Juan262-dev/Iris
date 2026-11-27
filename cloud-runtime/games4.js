@@ -1,4 +1,4 @@
-import {dominoHand,dominoTable} from './gameVisual.js';
+import {dominoHand,dominoTable,visual2048,crossVisual} from './gameVisual.js';
 import { recordMatch5 } from './games5.js';
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
@@ -31,12 +31,7 @@ async function picture(title,lines){
     const body='<rect width="620" height="'+h+'" rx="20" fill="#201831"/><text x="24" y="43" font-size="26" fill="#e4d5ff" font-weight="bold">'+esc(title)+'</text>'+lines.map((l,i)=>'<rect x="20" y="'+(62+i*45)+'" width="580" height="38" rx="8" fill="#382b55"/><text x="34" y="'+(88+i*45)+'" font-size="19" fill="#fff">'+esc(l)+'</text>').join('');
     return sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="620" height="'+h+'"><g font-family="sans-serif">'+body+'</g></svg>')).png().toBuffer();
 }
-async function board2048(g){
-    const colors=['#382b55','#705392','#8b64ab','#aa78a7','#bc8865','#c69b58','#c7ad65'];
-    const body=['<rect width="460" height="540" rx="20" fill="#201831"/>','<text x="24" y="44" fill="#fff" font-size="30">2048 • '+g.score+' pts</text>'];
-    g.b.forEach((v,i)=>{const x=22+(i%4)*106,y=75+Math.floor(i/4)*106;body.push('<rect x="'+x+'" y="'+y+'" width="100" height="100" rx="10" fill="'+colors[v?Math.min(6,Math.log2(v)):0]+'"/>');if(v)body.push('<text x="'+(x+50)+'" y="'+(y+62)+'" font-size="34" fill="white" text-anchor="middle">'+v+'</text>');});
-    return {image:await sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="460" height="540"><g font-family="sans-serif">'+body.join('')+'</g></svg>')).png().toBuffer(),caption:':2048 cima | baixo | esquerda | direita | sair'};
-}
+async function board2048(g,best){return visual2048(g,best,':2048 c (cima) | b (baixo) | e (esquerda) | d (direita) | m (mesa)');}
 function award(state,id,key,points=1){const p=state.players[id];if(!p)return;const month=new Date().toISOString().slice(0,7);if(p.season4?.month!==month)p.season4={month,points:0};p.season4.points=Math.min(100000,p.season4.points+points);p.games4??={};p.games4[key]=Math.min(100000,(p.games4[key]||0)+1);}
 function ownGame(db,name,id,now){const all=db[name]??={};for(const [k,g] of Object.entries(all))if(g.expires<=now)delete all[k];return all;}
 const puzzles=[{rows:['SOL','A#U','L#A'],clues:['1H: estrela do nosso sistema (3)','1V: tempero comum (3)','2V: satélite natural (3)'],words:['sol','sal','lua']}];
@@ -44,16 +39,17 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
     if(!games4.includes(name))return null;
     arg=String(arg).trim().toLowerCase();const db=state.games4??={};
     if(name==='2048'){
+        arg=({c:'cima',b:'baixo',e:'esquerda',d:'direita',m:'mesa'})[arg]||arg;
         const all=ownGame(db,name,id,now);let g=all[id];
         if(arg==='sair'){delete all[id];return out('2048 encerrado.',true);}
-        if(arg==='novo'){if(g)return out('Já existe uma partida. :2048 sair.');if(Object.keys(all).length>=50)return out('Limite de partidas.');g=all[id]={b:Array(16).fill(0),score:0,expires:now+day};spawn(g.b,choose);spawn(g.b,choose);return out(await board2048(g),true);}
+        if(arg==='novo'){if(g)return out('Já existe uma partida. :2048 sair.');if(Object.keys(all).length>=50)return out('Limite de partidas.');g=all[id]={b:Array(16).fill(0),score:0,expires:now+day};spawn(g.b,choose);spawn(g.b,choose);return out(await board2048(g,state.players[id]?.best2048),true);}
         if(!g)return out('Use :2048 novo.');
         if(arg==='recorde')return out('Seu recorde: '+(state.players[id]?.best2048||0)+' pts. Partida: '+g.score+' pts.');
-        if(!arg||arg==='mesa')return out(await board2048(g));
+        if(!arg||arg==='mesa')return out(await board2048(g,state.players[id]?.best2048));
         if(!['cima','baixo','esquerda','direita'].includes(arg))return out('Use :2048 cima, baixo, esquerda ou direita.');
         const m=slide2048(g.b,arg);if(!m.changed)return out('Movimento sem mudança.');
         g.b=m.board;g.score+=m.score;if(state.players[id])state.players[id].best2048=Math.max(state.players[id].best2048||0,g.score);spawn(g.b,choose);g.expires=now+day;
-        const result=await board2048(g);
+        const result=await board2048(g,state.players[id]?.best2048);
         if(g.b.includes(2048)||!['cima','baixo','esquerda','direita'].some(d=>slide2048(g.b,d).changed)){if(g.b.includes(2048)){award(state,id,name,3);result.caption='Você chegou a 2048!';}else result.caption='Fim da partida. Pontos: '+g.score;delete all[id];}
         return out(result,true);
     }
@@ -132,9 +128,8 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         const p=puzzles[0];if(arg==='novo'){if(g)return out('Já existe uma cruzada.');g=db[name]={ids:[id],solved:[],expires:now+day};}
         if(!g)return out('Use :cruzadas novo.');
         if(!g.ids.includes(id))return out('Já existe uma cruzada de outro jogador.');
-        const m=/^resposta ([123]) ([a-z]+)$/.exec(arg);if(m){const i=Number(m[1])-1;if(g.solved.includes(i))return out('Pista já resolvida.');if(p.words[i]!==m[2])return out('Tente outra palavra.');g.solved.push(i);award(state,id,name);if(g.solved.length===p.words.length){delete db[name];return out('Palavras cruzadas concluídas!',true);}}
-        const lines=p.rows.map((r,y)=>Array.from(r).map((c,x)=>c==='#'?'■':(g.solved.includes(0)&&y===0||g.solved.includes(1)&&x===0||g.solved.includes(2)&&x===2)?c:'□').join('   '));
-        return out({image:await picture('PALAVRAS CRUZADAS',lines.concat(p.clues)),caption:':cruzadas resposta 1 sol (responda pelo número da pista).'},arg==='novo'||!!m);
+        const m=/^(?:resposta )?([123]) ([a-z]+)$/.exec(arg.normalize('NFD').replace(/\p{M}/gu,''));if(m){const i=Number(m[1])-1;if(g.solved.includes(i))return out('Pista já resolvida.');if(p.words[i]!==m[2])return out('Tente outra palavra.');g.solved.push(i);award(state,id,name);if(g.solved.length===p.words.length){const result=await crossVisual(p,g.solved,'Palavras cruzadas concluídas!');delete db[name];return out(result,true);}}
+        return out(await crossVisual(p,g.solved,':cruzadas 1 palavra (número da pista) | :cruzadas m'),arg==='novo'||!!m);
     }
     if(name==='tesouro'){
         const clues=[['Onde livros costumam morar?','biblioteca'],['O que ilumina o dia?','sol'],['O que marca as horas?','relogio']];
