@@ -14,20 +14,22 @@ function selectPage(name){if(!Object.hasOwn(titles,name)||name==='admin'&&!me?.a
 function setSelected(id){selected=id;renderSettings();}
 function check(parent,label,key,checked){const row=el('label',undefined,'switch-row'),input=el('input');input.type='checkbox';input.dataset.key=key;input.checked=checked;row.append(el('span',label),input);parent.append(row);}
 function getChecks(id){return Object.fromEntries([...$(id).querySelectorAll('input[type=checkbox]')].map(x=>[x.dataset.key,x.checked]));}
+function updatePreview(){const b=activeBot();if(!b){$('preview-title').textContent='Crie um bot';$('preview-text').textContent='';$('preview-commands').textContent='';return;}const checked=getChecks('command-list');$('preview-title').textContent=b.display_name;$('preview-text').textContent=b.greeting||'Bem-vindo ao menu!';$('preview-commands').textContent=Object.entries(data.catalog).map(([k,names])=>[k.toUpperCase(),names.filter(n=>checked[n]!==false).map(n=>b.prefix+n).join('  ')]).filter(([,s])=>s).map(([k,s])=>k+'\n'+s).join('\n\n');}
+function filterCommands(){const term=$('command-filter').value.trim().toLowerCase();for(const block of $('command-list').children){let n=0;for(const row of block.querySelectorAll('.switch-row')){row.hidden=!!term&&!row.textContent.toLowerCase().includes(term);if(!row.hidden)n++;}block.hidden=n===0;}}
 function renderSettings(){
  const b=activeBot();for(const id of ['config-bot','group-bot','command-bot']){const s=$(id);s.replaceChildren();for(const x of data.bots){const o=el('option',x.display_name);o.value=x.id;s.append(o);}s.value=selected||'';}
  for(const id of ['config-form','group-form','command-form'])$(id).hidden=!b;
- $('group-list').replaceChildren();$('module-list').replaceChildren();$('command-list').replaceChildren();if(!b)return;
+ $('group-list').replaceChildren();$('module-list').replaceChildren();$('command-list').replaceChildren();if(!b){updatePreview();return;}
  $('config-name').value=b.display_name;$('prefix').value=b.prefix;$('greeting').value=b.greeting||'';
  for(const k of modules)check($('module-list'),k,k,b.modules?.[k]!==false);
  for(const [category,items] of Object.entries(data.catalog)){const block=el('div',undefined,'command-section');block.append(el('h3',category));for(const k of items)check(block,b.prefix+k,k,b.commands?.[k]!==false);$('command-list').append(block);}
  for(const g of b.groups||[]){const row=el('div',undefined,'item-row');row.append(el('span',g),button('Remover',()=>act(()=>save({groups:b.groups.filter(x=>x!==g)}))));$('group-list').append(row);}
- if(!b.groups?.length)$('group-list').append(el('p','Nenhum grupo planejado.','muted'));
+ if(!b.groups?.length)$('group-list').append(el('p','Nenhum grupo planejado.','muted'));updatePreview();filterCommands();
 }
 function configBody(b,patch={}){return {action:'save',id:b.id,name:b.display_name,prefix:b.prefix,greeting:b.greeting||'',modules:b.modules||{},commands:b.commands||{},groups:b.groups||[],...patch};}
 async function save(patch){const b=activeBot();if(!b)throw Error('Crie um bot primeiro.');const v=await api('instance',configBody(b,patch));await loadBots();show(v.message);}
 function renderBots(){
- $('count').textContent=data.bots.length;$('limit').textContent=data.limits.bot_limit;
+ $('count').textContent=data.bots.length;$('limit').textContent=data.limits.bot_limit;$('draft-stats').textContent=data.bots.length+' rascunhos • '+data.bots.reduce((n,b)=>n+(b.groups?.length||0),0)+' grupos planejados • '+Object.values(data.catalog).flat().length+' comandos no catálogo. Não são métricas de conversas.';
  $('bot-list').replaceChildren();if(!data.bots.length)$('bot-list').append(el('p','Nenhum bot criado.','muted'));
  for(const b of data.bots){const box=el('article',undefined,'card');box.append(el('span','Rascunho • conexão pendente','pill'),el('h3',b.display_name,'spaced'),el('p','Prefixo '+b.prefix+' • '+(b.groups?.length||0)+' grupos planejados','muted'));
  const row=el('div',undefined,'buttons');row.append(button('Editar',()=>{setSelected(b.id);selectPage('configuration');}),button('Ligar (pendente)',()=>selectPage('connect')),button('Desativar',()=>act(async()=>{const v=await api('instance',{id:b.id,action:'disable'});await loadBots();show(v.message);})),button('Excluir',()=>{if(confirm('Excluir somente este rascunho?'))act(async()=>{const v=await api('instance',{id:b.id,action:'delete'});await loadBots();show(v.message);});}));box.append(row);$('bot-list').append(box);}
@@ -58,7 +60,8 @@ $('enroll').addEventListener('click',()=>act(async()=>{const v=await api('mfa-en
 $('mfa-enroll-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const v=await api('mfa-verify',{factor:pendingFactor,code:$('mfa-enroll-code').value});pendingFactor=null;$('enroll-secret').textContent='';$('enroll-box').hidden=true;$('mfa-enroll-code').value='';await refresh(true);show(v.message);});});
 $('mfa-login-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const factor=security.factors.find(f=>f.status==='verified');if(!factor)throw Error('Fator não encontrado.');const v=await api('mfa-verify',{factor:factor.id,code:$('mfa-login-code').value});$('mfa-login-code').value='';await refresh(true);show(v.message);});});
 $('copy').addEventListener('click',()=>act(async()=>{await navigator.clipboard.writeText($('account-id').value);show('Identificador copiado.');}));
-const theme=$('theme');function themeSet(v){if(!['iris','ocean','light'].includes(v))v='iris';document.documentElement.dataset.theme=v;theme.value=v;try{localStorage.setItem('iris-theme',v);}catch{}}
+$('command-list').addEventListener('change',updatePreview);$('command-filter').addEventListener('input',filterCommands);for(const id of ['enable-visible','disable-visible'])$(id).addEventListener('click',()=>{for(const block of $('command-list').children)if(!block.hidden)for(const row of block.querySelectorAll('.switch-row'))if(!row.hidden)row.querySelector('input').checked=id==='enable-visible';updatePreview();});
+const theme=$('theme');function themeSet(v){if(!['iris','ocean','light','forest','solar'].includes(v))v='iris';document.documentElement.dataset.theme=v;theme.value=v;try{localStorage.setItem('iris-theme',v);}catch{}}
 theme.addEventListener('change',()=>themeSet(theme.value));try{themeSet(localStorage.getItem('iris-theme')||'iris');}catch{themeSet('iris');}
 if(location.hash){const p=new URLSearchParams(location.hash.slice(1));if(p.get('type')==='recovery')recoveryToken=p.get('access_token');history.replaceState(null,'',location.pathname);}
 if(recoveryToken)mode('reset');else refresh(true);
