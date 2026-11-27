@@ -18,6 +18,6 @@ assert.equal(purchase(p,'estrela'),null);
 assert.equal(p.coins,20);
 assert.match(purchase(p,'estrela'),/já possui/);
 assert.match(purchase(p,'trofeu'),/insuficientes/);
-assert.equal(parseExtra('!iris ia perguntar teste',true).name,'ia');
-assert.equal(parseExtra('!iris definirregras teste',false),null);
+assert.equal(parseExtra(':ia perguntar teste',true).name,'ia');
+assert.equal(parseExtra(':definirregras teste',false),null);
 console.log('Iris: local dialogue, games and shop tests passed');
