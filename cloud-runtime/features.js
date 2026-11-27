@@ -25,7 +25,8 @@ import { games5,game5,removeGames5 } from './games5.js';
 import { community5,communityFeature5,commandPermitted,progress5,museumDonation,removeCommunity5 } from './community5.js';
 import { media5,collage5,collageFeature5 } from './media5.js';
 import { infinityCommands,infinityGames,infinityMedia,infinityStudy,infinityMenu,infinityFeature,removeInfinity,pruneInfinity,artCard,artPhoto } from './infinity.js';
-import {retiredGames,gameCommands,gameGuide,gameHub} from './gameHub.js';
+import {retiredGames,gameCommands,gameGuide,gameHub,gameHubPage} from './gameHub.js';
+import {gameCatalogVisual} from './gameVisual.js';
 import { context5,serialGroups,commandToken,alreadyApplied,markApplied,prune5 } from './transaction5.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
@@ -105,7 +106,7 @@ export function makeFeatures() {
     }
     async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert, studio, unoRoute, advancedMedia, original, rawName, loadProfileAsset, funMedia, newMedia, loadPackImage, professionalMedia }) {
         const { name, arg } = command;
-        if(name==='jogos'){if(arg==='retirado')return 'O RPG e o Íris World foram desativados. Use :jogos para conhecer os jogos disponíveis.';const {state,s}=await readGroup(jid);return gameHub(arg,state,actor?hash(s.key,jid+':'+actor):null);}
+        if(name==='jogos'){const query=arg.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();if(query==='retirado')return 'O RPG e o Íris World foram desativados. Use :jogos para conhecer os jogos disponíveis.';const page=gameHubPage(query);if(page)return page.error||await gameCatalogVisual(page).catch(()=>page.caption);const {state,s}=await readGroup(jid);return gameHub(query==='texto'?'lista':query,state,actor?hash(s.key,jid+':'+actor):null);}
         if(arg==='ajuda'&&name!=='xadrez'&&gameGuide(name))return gameGuide(name);
         if (name === 'menutexto') return menu(arg);
         if(['menu','menupremium','menuimagem','ajudacartao'].includes(name)){
