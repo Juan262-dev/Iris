@@ -91,7 +91,7 @@ export function makePersistentChess({readGroup,save,choose=randomInt,now=Date.no
         const activeDuel=()=>db.duel&&(db.duel.white===id||db.duel.black===id);
         if(db.duel&&db.duel.expires<now()){db.duel=null;await persist();}
         if(db.solo[id]&&db.solo[id].expires<now()){delete db.solo[id];await persist();}
-        if(input==='ajuda')return '♟️ !iris xadrez novo | novo medio | novo dificil | tema madeira | desafio | aceitar | ranking | stats | apagar | tabuleiro | sair | e2e4. Partidas e resultados de quem joga são salvos com identificador pseudônimo por grupo; apagar remove seus dados.';
+        if(input==='ajuda')return '♟️ :xadrez novo | novo medio | novo dificil | tema madeira | desafio | aceitar | ranking | stats | apagar | tabuleiro | sair | e2e4. Partidas e resultados de quem joga são salvos com identificador pseudônimo por grupo; apagar remove seus dados.';
         if(input==='ranking'){
             const rows=Object.entries(db.stats).sort((a,b)=>b[1].w-a[1].w||a[1].l-b[1].l).slice(0,10);
             return '🏆 *Ranking de xadrez*\n'+(rows.map(([k,v],i)=>(i+1)+'. '+label(k)+' — V '+v.w+' | D '+v.l+' | E '+v.d).join('\n')||'Nenhuma partida concluída.');
@@ -106,13 +106,13 @@ export function makePersistentChess({readGroup,save,choose=randomInt,now=Date.no
             const theme=input.slice(5);
             if(!themes.includes(theme))return 'Temas: classico, madeira, escuro.';
             if(!db.prefs[id]&&Object.keys(db.prefs).length>=200)return 'Limite de perfis de xadrez.';
-            db.prefs[id]={...pref,theme};await persist();return '🎨 Tema '+theme+' selecionado. Use !iris xadrez tabuleiro.';
+            db.prefs[id]={...pref,theme};await persist();return '🎨 Tema '+theme+' selecionado. Use :xadrez tabuleiro.';
         }
         if(input==='desafio'){
             if(db.duel)return 'Já existe um desafio ou partida multiplayer neste grupo.';
-            if(db.solo[id])return 'Encerre sua partida solo com !iris xadrez sair primeiro.';
+            if(db.solo[id])return 'Encerre sua partida solo com :xadrez sair primeiro.';
             db.duel={white:id,black:null,moves:[],expires:now()+10*60000};
-            await persist();return '♟️ Desafio aberto por '+label(id)+'. Outro participante pode enviar !iris xadrez aceitar em até 10 minutos. Resultados são registrados no ranking pseudônimo; !iris xadrez apagar remove seus dados.';
+            await persist();return '♟️ Desafio aberto por '+label(id)+'. Outro participante pode enviar :xadrez aceitar em até 10 minutos. Resultados são registrados no ranking pseudônimo; :xadrez apagar remove seus dados.';
         }
         if(input==='aceitar'){
             if(!db.duel||db.duel.black)return 'Nenhum desafio aberto.';
@@ -131,10 +131,10 @@ export function makePersistentChess({readGroup,save,choose=randomInt,now=Date.no
         }
         const duel=activeDuel();
         const rec=duel?db.duel:db.solo[id];
-        if(!rec)return '♟️ Use !iris xadrez novo ou desafio.';
+        if(!rec)return '♟️ Use :xadrez novo ou desafio.';
         if(duel&&!rec.black){
             if(input==='sair'){db.duel=null;await persist();return 'Desafio cancelado.';}
-            return 'Aguardando outro participante usar !iris xadrez aceitar.';
+            return 'Aguardando outro participante usar :xadrez aceitar.';
         }
         const game=reconstruct(rec);
         const white=duel?rec.white:id;
@@ -158,14 +158,14 @@ export function makePersistentChess({readGroup,save,choose=randomInt,now=Date.no
         };
         if(input==='sair'){finish(color==='w'?'b':'w');await persist();return '♟️ Partida encerrada por desistência. Resultado registrado.';}
         if(input==='tabuleiro'||input==='aceitar'||newGame||!input)return board('Vez: '+turn()+'. Envie só e2e4, e2 e4, Cf3 ou cavalo f3. Partida salva por até 7 dias de inatividade. Use apagar para excluir seus dados.');
-        if(!isChessMove(arg))return activeOnly?null:'Use !iris xadrez ajuda.';
+        if(!isChessMove(arg))return activeOnly?null:'Use :xadrez ajuda.';
         if(game.turn()!==color)return activeOnly?null:'Aguarde a vez das suas peças.';
         const candidates=resolveChessMove(game,arg);
         if(candidates.length>1)return '♟️ Mais de uma peça pode chegar nessa casa. Informe a origem e o destino, por exemplo g1f3.';
-        if(!candidates.length)return '♟️ Jogada inválida. Consulte !iris xadrez tabuleiro.';
+        if(!candidates.length)return '♟️ Jogada inválida. Consulte :xadrez tabuleiro.';
         const selected=candidates[0];
         try{const m=game.move(moveArg(selected));rec.moves.push(notation(m));}
-        catch{return '♟️ Jogada inválida. Consulte !iris xadrez tabuleiro.';}
+        catch{return '♟️ Jogada inválida. Consulte :xadrez tabuleiro.';}
         let status='Jogada: '+notation(selected);
         if(!duel&&!game.isGameOver()){
             const m=pickMove(game,rec.level,choose);
