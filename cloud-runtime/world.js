@@ -12,20 +12,23 @@ export function worldView(state,id,now=Date.now()){
  return {xp:num(p.xp),coins:num(p.coins),level:1+Math.floor(num(p.xp)/10),visits:num(x.visits),job:['artesao','botanico','pesquisador','bibliotecario'].includes(x.job)?x.job:null,places:worldPlaces.map((name,i)=>({id:i+1,name,item:items[i],level:Math.min(5,num(d.buildings?.[i])),owned:num(x.collection?.[items[i]]),visited:x.exploreDay===today&&Array.isArray(x.visited)&&x.visited.includes(i+1)})),contributions:num(x.contributions),project:num(d.project?.count),companyLevel:num(x.company?.level)};
 }
 export function makeWorldSessions({verify,operate,clock=Date.now,limit=160}){
- const codes=new Map(),sessions=new Map();
- const prune=()=>{const n=clock();for(const map of [codes,sessions])for(const [k,v] of map)if(v.expires<=n)map.delete(k);};
- const revoke=({jid,actor})=>{for(const map of [codes,sessions])for(const [k,v] of map)if(v.jid===jid&&v.actor===actor)map.delete(k);};
- const issue=identity=>{prune();revoke(identity);if(codes.size+sessions.size>=limit)return null;const code=token();codes.set(code,{...identity,expires:clock()+300000});return code;};
+ const codes=new Map(),sessions=new Map(),claims=new Map();
+ const prune=()=>{const n=clock();for(const map of [codes,sessions,claims])for(const [k,v] of map)if(v.expires<=n)map.delete(k);};
+ const revoke=({jid,actor})=>{for(const map of [codes,sessions,claims])for(const [k,v] of map)if(v.jid===jid&&v.actor===actor)map.delete(k);};
+ const revokeGroup=jid=>{for(const map of [codes,sessions,claims])for(const [k,v] of map)if(v.jid===jid)map.delete(k);};
+ const issue=identity=>{prune();revoke(identity);if(codes.size+sessions.size+claims.size>=limit)return null;const code=token();codes.set(code,{...identity,expires:clock()+300000});return code;};
  async function rpc(input){
   prune();if(!input||typeof input!=='object')return {status:400};
   if(input.op==='login'){
    if(!isWorldToken(input.code))return {status:401};
    const entry=codes.get(input.code);if(!entry)return {status:401};
-   codes.delete(input.code);if(!await verify(entry))return {status:403};
-   const data=await operate(entry);if(!data)return {status:403};
-   if(codes.size+sessions.size>=limit)return {status:503};
-   const session=token();sessions.set(session,{...entry,expires:clock()+3600000,last:clock(),busy:false});
-   return {status:200,session,data};
+   codes.delete(input.code);claims.set(input.code,entry);
+   try{
+    if(!await verify(entry)||claims.get(input.code)!==entry||entry.expires<=clock())return {status:403};
+    const data=await operate(entry);if(!data||claims.get(input.code)!==entry||entry.expires<=clock())return {status:403};
+    const session=token();sessions.set(session,{...entry,expires:clock()+3600000,last:clock(),busy:false});
+    return {status:200,session,data};
+   }finally{claims.delete(input.code);}
   }
   if(!isWorldToken(input.session))return {status:401};
   const entry=sessions.get(input.session);if(!entry)return {status:401};
@@ -40,5 +43,5 @@ export function makeWorldSessions({verify,operate,clock=Date.now,limit=160}){
    return {status:200,data};
   }finally{entry.busy=false;}
  }
- return {issue,revoke,rpc};
+ return {issue,revoke,revokeGroup,rpc};
 }
