@@ -3,6 +3,7 @@ import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
+import { infinityMedia } from './infinity.js';
 import { makeTextSticker } from './sticker.js';
 import { stickerCommand, sendSoundSticker } from './stickerCommands.js';
 import { makeMeme } from './advancedMedia.js';
@@ -31,7 +32,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     const features = makeFeatures();
     setRuntime('whatsapp','conectando');
     const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
-    const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5]);
+    const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5,...infinityMedia]);
     let openedAt=0;
     const pairingNumber = lifecycle.localPrivate ? (lifecycle.pairingNumber || '') : (process.env.IRIS_PAIRING_PHONE || '');
     const auth = await useCloudAuthState('0', baileys);
