@@ -16,7 +16,7 @@ export function makeJobQueue({max=3,onChange=()=>{},now=Date.now,maxWait=60000}=
     };
 }
 export function reconnectDelay(status,attempt,registered){
-    if(!registered||attempt>=3||![408,428,503,515].includes(status))return null;
+    if(!registered||attempt>=3||![408,428,502,503,504,515].includes(status))return null;
     return status===515&&attempt===0?0:[2000,8000,20000][attempt];
 }
 
