@@ -1,4 +1,4 @@
-import {makeStopTickets,parseStopPrivate} from './stopPrivate.js';
+import {makeStopTickets,parseStopPrivate,parseStopQuote,formatStopAnswers,stopPrompt} from './stopPrivate.js';
 // Experimental headless connection test, not the full Iris command engine.
 import * as baileys from '@whiskeysockets/baileys';
 import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
@@ -204,7 +204,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
         for(const msg of messages||[]){
             const jid=msg.key?.remoteJid,id=msg.key?.id;
             const plain=msg.message?.conversation||msg.message?.extendedTextMessage?.text||'';
-            if(!jid?.endsWith('@g.us')){if(!msg.key?.fromMe&&unoRoute(jid)&&fresh(msg)&&parseStopPrivate(plain)&&normal.length<30)normal.push(msg);continue;}
+            if(!jid?.endsWith('@g.us')){if(!msg.key?.fromMe&&unoRoute(jid)&&fresh(msg)&&(parseStopPrivate(plain)||stopTickets.quoted(parseStopQuote(msg.message)?.messageId))&&normal.length<30)normal.push(msg);continue;}
             if(String(plain).trim().toLowerCase()!==':ping'){
                 const text=plain||msg.message?.imageMessage?.caption||msg.message?.documentMessage?.caption||msg.message?.videoMessage?.caption||'';
                 const enabled=chats.has(jid),owner=msg.key?.fromMe===true;
@@ -237,10 +237,13 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 if (!Number.isFinite(ts) || ts < Date.now() / 1000 - 120 || ts > Date.now() / 1000 + 120) continue;
                 const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || msg.message?.videoMessage?.caption || '';
                 if(!jid.endsWith('@g.us')){
-                    const answer=parseStopPrivate(text);if(!answer||msg.key?.fromMe||!remember(jid,id)||!allowCommand(jid,jid))continue;
+                    const quote=parseStopQuote(msg.message),match=quote?stopTickets.quoted(quote.messageId):null;
+                    const answer=match?{code:match.code,answer:quote.answer}:parseStopPrivate(text);if(!answer||msg.key?.fromMe||!remember(jid,id)||!allowCommand(jid,jid))continue;
                     try{const ticket=stopTickets.find(answer.code);if(!ticket||!chats.has(ticket.jid)||await worldRecipient({jid:ticket.jid,route:unoRoute(jid)})!==ticket.recipient){await sock.sendMessage(jid,{text:'Código inválido ou expirado. Peça :stop pv no grupo.'});continue;}
+                        const formatted=match?formatStopAnswers(answer.answer,ticket.categories):answer.answer;
+                        if(formatted===null){await sock.sendMessage(jid,{text:'Responda à mensagem original com exatamente '+ticket.categories.length+' linhas, na ordem das categorias. Use - quando não souber.'},{quoted:msg});continue;}
                         const source={...msg,key:{...msg.key,participant:ticket.actor,remoteJid:ticket.jid,fromMe:false}};
-                        const result=await runFeature({name:'stop',arg:'respostapv '+ticket.match+' '+ticket.round+' '+answer.answer},ticket.jid,ticket.actor,source,false);
+                        const result=await runFeature({name:'stop',arg:'respostapv '+ticket.match+' '+ticket.round+' '+formatted},ticket.jid,ticket.actor,source,false);
                         if(typeof result==='string'){if(result.startsWith('✅ Resposta registrada')){stopTickets.remove(answer.code);await sock.sendMessage(jid,{text:'✅ Resposta registrada no STOP.'});if(!closed&&chats.has(ticket.jid))await sock.sendMessage(ticket.jid,{text:result});}else await sock.sendMessage(jid,{text:result});}
                     }catch{await sock.sendMessage(jid,{text:'Não foi possível registrar. Tente novamente.'}).catch(()=>{});}
                     continue;
@@ -275,9 +278,9 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 } else if(extra?.name==='stop'&&extra.arg.toLowerCase()==='pv'){
                     try{const result=await runFeature(extra,jid,actor,msg,owner);if(!result?.stopPrivate)response=result;else{
                         const recipient=await worldRecipient({jid,route:unoRoute(owner?sock.user?.id:msg.key?.participant)});
-                        const code=recipient&&!owner?stopTickets.issue({jid,actor,recipient,round:result.round,match:result.match}):null;
+                        const code=recipient&&!owner?stopTickets.issue({jid,actor,recipient,round:result.round,match:result.match,categories:result.categories}):null;
                         if(!code)response='Não consegui verificar o destinatário. Use :stop resposta no grupo.';
-                        else try{await sock.sendMessage(recipient,{text:'📝 STOP no privado\n'+result.prompt+'\nEnvie :stop responder '+code+' palavra | palavra | ...\nUse - para deixar uma categoria vazia. Não compartilhe o código.'});response='📩 Instruções do STOP enviadas no seu privado.';}catch{stopTickets.remove(code);response='Não consegui enviar no privado.';}
+                        else try{const sent=await sock.sendMessage(recipient,{text:stopPrompt(result)});if(!stopTickets.bind(code,sent?.key?.id))throw Error('missing stop message id');response='📩 Formulário enviado no seu privado. Responda à mensagem da Íris.';}catch{stopTickets.remove(code);response='Não consegui enviar no privado. Use :stop pv novamente.';}
                     }}catch{response='STOP privado indisponível.';}
                 } else if(extra?.name==='world'){
                     const identity={jid,actor,route:unoRoute(owner?sock.user?.id:msg.key?.participant)};
