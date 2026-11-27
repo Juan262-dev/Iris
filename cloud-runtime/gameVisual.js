@@ -60,7 +60,7 @@ export async function ludoVisual(g,caption){
  b+=rect(30,y,660,36,i===g.turn?'#4f406b':'#332b4b',8)+txt(44,y+25,ln[i]+' • '+g.pieces[id].filter(p=>p===40).length+'/2 na chegada'+(moves.length?' • Pode mover '+moves.join(', '):''),19,lc[i]);y+=43;});
  b+=footer(y+6,':ludo d  •  :ludo 1  •  :ludo 2  •  :ludo m');return png(y+84,b,caption);
 }
-function wrap(s,n=48){const rows=[];for(const line of String(s).split('\n')){let cur='';for(const word of line.trim().split(/\s+/)){if(cur&&cur.length+word.length+1>n){rows.push(cur);cur='';}while(word.length>n){if(cur){rows.push(cur);cur='';}rows.push(word.slice(0,n));word=word.slice(n);}cur+=(cur?' ':'')+word;}rows.push(cur);}return rows;}
+function wrap(s,n=48){const rows=[];for(const line of String(s).split('\n')){let cur='';for(let word of line.trim().split(/\s+/)){if(cur&&cur.length+word.length+1>n){rows.push(cur);cur='';}while(word.length>n){if(cur){rows.push(cur);cur='';}rows.push(word.slice(0,n));word=word.slice(n);}cur+=(cur?' ':'')+word;}rows.push(cur);}return rows;}
 export async function stopForm(info,caption){
  let b=header('STOP • ADEDONHA','Rodada '+info.round+'  •  Respostas privadas','#f1bc70');
  b+=rect(30,168,660,100,'#594066',16)+txt(60,206,'LETRA DA RODADA',21,'#e8d9f4','start',700)+txt(650,240,info.letter.toUpperCase(),72,'#fff2c9','end',700);
