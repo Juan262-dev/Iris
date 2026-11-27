@@ -1,22 +1,64 @@
 'use strict';
-const $=id=>document.getElementById(id), notice=$('notice');
-let me=null,busy=false;
-function show(t){notice.textContent=t||'';}
-function loading(v){busy=v;for(const e of document.querySelectorAll('button'))e.disabled=v;}
-async function api(name,data){const r=await fetch('/manager/api/'+name,{method:data===undefined?'GET':'POST',headers:data===undefined?{}:{'Content-Type':'application/json','X-Iris-Request':'1'},credentials:'same-origin',cache:'no-store',body:data===undefined?undefined:JSON.stringify(data)});let v;try{v=await r.json();}catch{throw Error('Servidor indisponível.');}if(!r.ok){const e=Error(v.error||v.message||'Não foi possível concluir.');e.status=r.status;throw e;}return v;}
-function render(){const logged=!!me;$('auth').hidden=logged;$('dashboard').hidden=!logged;$('logout').hidden=!logged;if(!logged)return;
-$('account-id').value=me.id;$('owner-help').hidden=me.admin;$('admin').hidden=!me.admin;
-$('bot-name').textContent=me.bot?.display_name||'Minha Íris';$('name').value=me.bot?.display_name||'';$('save-bot').textContent=me.bot?'Salvar nome':'Criar configuração';$('delete-bot').hidden=!me.bot;$('bot-description').textContent=me.bot?'Configuração criada. A integração oficial ainda precisa ser habilitada.':'Crie uma configuração individual para seu futuro bot.';
-if(me.admin&&me.legacy){$('legacy-status').textContent=me.legacy.status;$('desired').textContent=me.legacy.desired?'Ligada':'Desligada';$('storage').textContent=me.legacy.storage;}
+const $=id=>document.getElementById(id);
+let me=null,data=null,security=null,selected=null,busy=false,page='overview',pendingFactor=null,recoveryToken=null;
+const titles={overview:'Visão geral',bots:'Meus bots',configuration:'Personalização',groups:'Grupos',commands:'Comandos',connect:'Conexão oficial',security:'Segurança',admin:'Administração'};
+const modules=['geral','estudos','jogos','midia','economia','diversao'];
+const show=t=>{$('notice').textContent=t||'';};
+function el(tag,txt,cls){const n=document.createElement(tag);if(txt!==undefined)n.textContent=txt;if(cls)n.className=cls;return n;}
+function button(text,fn,cls='secondary'){const n=el('button',text,cls);n.type='button';n.addEventListener('click',fn);return n;}
+async function api(name,body){const r=await fetch('/manager/api/'+name,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-Iris-Request':'1'},credentials:'same-origin',cache:'no-store',body:body===undefined?undefined:JSON.stringify(body)});let v;try{v=await r.json();}catch{throw Error('Servidor indisponível.');}if(!r.ok){const e=Error(v.error||v.message||'Não foi possível concluir.');e.status=r.status;throw e;}return v;}
+async function act(fn){if(busy)return;busy=true;document.body.classList.add('busy');try{await fn();}catch(e){show(e.message);if(e.status===401)await refresh(true);}finally{busy=false;document.body.classList.remove('busy');}}
+function mode(which){for(const [id,on] of [['auth',which==='auth'],['auth-intro',which!=='dash'],['dashboard',which==='dash'],['reset',which==='reset'],['mfa-gate',which==='mfa'],['logout',which==='dash'||which==='mfa']])$(id).hidden=!on;}
+function activeBot(){return data?.bots.find(b=>b.id===selected)||null;}
+function selectPage(name){if(!Object.hasOwn(titles,name)||name==='admin'&&!me?.admin)return;page=name;for(const k of Object.keys(titles))$('page-'+k).hidden=k!==name;for(const b of document.querySelectorAll('[data-page]')){b.classList.toggle('active',b.dataset.page===name);b.setAttribute('aria-current',b.dataset.page===name?'page':'false');}$('page-title').textContent=titles[name];if(name==='admin')act(loadAdmin);}
+function setSelected(id){selected=id;renderSettings();}
+function check(parent,label,key,checked){const row=el('label',undefined,'switch-row'),input=el('input');input.type='checkbox';input.dataset.key=key;input.checked=checked;row.append(el('span',label),input);parent.append(row);}
+function getChecks(id){return Object.fromEntries([...$(id).querySelectorAll('input[type=checkbox]')].map(x=>[x.dataset.key,x.checked]));}
+function renderSettings(){
+ const b=activeBot();for(const id of ['config-bot','group-bot','command-bot']){const s=$(id);s.replaceChildren();for(const x of data.bots){const o=el('option',x.display_name);o.value=x.id;s.append(o);}s.value=selected||'';}
+ for(const id of ['config-form','group-form','command-form'])$(id).hidden=!b;
+ $('group-list').replaceChildren();$('module-list').replaceChildren();$('command-list').replaceChildren();if(!b)return;
+ $('config-name').value=b.display_name;$('prefix').value=b.prefix;$('greeting').value=b.greeting||'';
+ for(const k of modules)check($('module-list'),k,k,b.modules?.[k]!==false);
+ for(const [category,items] of Object.entries(data.catalog)){const block=el('div',undefined,'command-section');block.append(el('h3',category));for(const k of items)check(block,b.prefix+k,k,b.commands?.[k]!==false);$('command-list').append(block);}
+ for(const g of b.groups||[]){const row=el('div',undefined,'item-row');row.append(el('span',g),button('Remover',()=>act(()=>save({groups:b.groups.filter(x=>x!==g)}))));$('group-list').append(row);}
+ if(!b.groups?.length)$('group-list').append(el('p','Nenhum grupo planejado.','muted'));
 }
-async function refresh(silent=false){try{me=await api('me');render();}catch(e){if(e.status===401){me=null;render();if(!silent)show('Entre na sua conta.');}else show(e.message);}}
-async function act(fn){if(busy)return;loading(true);try{await fn();}catch(e){show(e.message);if(e.status===401)await refresh(true);}finally{loading(false);}}
+function configBody(b,patch={}){return {action:'save',id:b.id,name:b.display_name,prefix:b.prefix,greeting:b.greeting||'',modules:b.modules||{},commands:b.commands||{},groups:b.groups||[],...patch};}
+async function save(patch){const b=activeBot();if(!b)throw Error('Crie um bot primeiro.');const v=await api('instance',configBody(b,patch));await loadBots();show(v.message);}
+function renderBots(){
+ $('count').textContent=data.bots.length;$('limit').textContent=data.limits.bot_limit;
+ $('bot-list').replaceChildren();if(!data.bots.length)$('bot-list').append(el('p','Nenhum bot criado.','muted'));
+ for(const b of data.bots){const box=el('article',undefined,'card');box.append(el('span','Rascunho • conexão pendente','pill'),el('h3',b.display_name,'spaced'),el('p','Prefixo '+b.prefix+' • '+(b.groups?.length||0)+' grupos planejados','muted'));
+ const row=el('div',undefined,'buttons');row.append(button('Editar',()=>{setSelected(b.id);selectPage('configuration');}),button('Ligar (pendente)',()=>selectPage('connect')),button('Desativar',()=>act(async()=>{const v=await api('instance',{id:b.id,action:'disable'});await loadBots();show(v.message);})),button('Excluir',()=>{if(confirm('Excluir somente este rascunho?'))act(async()=>{const v=await api('instance',{id:b.id,action:'delete'});await loadBots();show(v.message);});}));box.append(row);$('bot-list').append(box);}
+ if(!data.bots.some(b=>b.id===selected))selected=data.bots[0]?.id||null;renderSettings();
+}
+async function loadBots(){data=await api('instances');renderBots();}
+function renderLegacy(){const s=me?.legacy;$('legacy').hidden=!me?.admin||!s;$('admin-nav').hidden=!me?.admin;if(s){$('legacy-status').textContent=s.status;$('desired').textContent=s.desired?'Ligada':'Desligada';$('storage').textContent=s.storage;$('worker-memory').textContent=s.workerMemory==null?'—':s.workerMemory+' MB';}}
+function renderSecurity(){const verified=security?.factors.some(f=>f.status==='verified');$('mfa-status').textContent=verified?'Autenticador ativo.':'Segundo fator ainda não configurado.';$('enroll').hidden=verified===true;$('account-id').value=me?.id||'';}
+async function loadAdmin(){if(!me?.admin)return;const a=await api('administration');$('manager-memory').textContent=a.memory+' MB';$('uptime').textContent=Math.floor(a.uptime/60)+' min';$('total').textContent=a.instanceCount+(a.limited?' (amostra limitada)':'');$('incidents').replaceChildren();for(const x of a.legacy.incidents||[])$('incidents').append(el('p',new Date(x.at).toLocaleString('pt-BR')+' • '+x.status));if(!a.legacy.incidents?.length)$('incidents').append(el('p','Nenhuma falha recente registrada.','muted'));$('user-list').replaceChildren();for(const u of a.users){const row=el('div',undefined,'account-row');row.append(el('code',u.id),el('p',u.count+' rascunho(s) • '+(u.suspended?'suspensa':'ativa')+(u.administrator?' • administrador':''),'muted'));if(!u.administrator&&u.id!==me.id){const lab=el('label','Limite de bots'),n=el('input');n.type='number';n.min='0';n.max='5';n.value=u.limit;lab.append(n);const checkbox=el('input');checkbox.type='checkbox';checkbox.checked=u.suspended;const s=el('label','Suspender configurações','switch-row');s.append(checkbox);row.append(lab,s,button('Salvar limites',()=>act(async()=>{const v=await api('administration',{id:u.id,limit:Number(n.value),suspended:checkbox.checked});await loadAdmin();show(v.message);})));}$('user-list').append(row);}}
+async function refresh(silent=false){
+ try{security=await api('security');if(security.required){me=null;mode('mfa');return;}me=await api('me');await loadBots();renderLegacy();renderSecurity();mode('dash');selectPage(page==='admin'&&!me.admin?'overview':page);if(page==='admin')await loadAdmin();}
+ catch(e){if(e.status===401){me=null;mode('auth');if(!silent)show('Entre na sua conta.');}else show(e.message);}
+}
 $('auth-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const v=await api('login',{email:$('email').value,password:$('password').value});$('password').value='';await refresh(true);show(v.message);});});
 $('signup').addEventListener('click',()=>{if(!$('auth-form').reportValidity())return;act(async()=>{const v=await api('signup',{email:$('email').value,password:$('password').value});$('password').value='';show(v.message);});});
-$('logout').addEventListener('click',()=>act(async()=>{await api('logout',{});me=null;render();show('Sessão encerrada.');}));
-$('refresh').addEventListener('click',()=>act(async()=>{await refresh();show('Painel atualizado.');}));
-$('bot-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const v=await api('bot',{action:me.bot?'rename':'create',name:$('name').value});await refresh(true);show(v.message);});});
-$('delete-bot').addEventListener('click',()=>{if(!confirm('Excluir apenas sua configuração ainda não conectada?'))return;act(async()=>{const v=await api('bot',{action:'delete'});await refresh(true);show(v.message);});});
-for(const action of ['start','stop','restart'])$(action).addEventListener('click',()=>{if(action!=='start'&&!confirm(action==='stop'?'Desligar a Íris principal sem desvincular o WhatsApp?':'Reiniciar a Íris principal?'))return;act(async()=>{const v=await api('control',{action});await refresh(true);show(v.message+' Use Atualizar para acompanhar a conexão.');});});
+$('recover').addEventListener('click',()=>{if(!$('email').reportValidity())return;act(async()=>show((await api('recover',{email:$('email').value})).message));});
+$('reset-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const v=await api('reset-password',{token:recoveryToken,password:$('new-password').value});recoveryToken=null;$('new-password').value='';mode('auth');show(v.message);});});
+$('logout').addEventListener('click',()=>act(async()=>{await api('logout',{});me=null;data=null;security=null;pendingFactor=null;$('enroll-box').hidden=true;$('enroll-secret').textContent='';mode('auth');show('Sessão encerrada.');}));
+$('refresh').addEventListener('click',()=>act(async()=>{await refresh();}));
+$('create-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const v=await api('instance',{action:'create',name:$('bot-name').value});$('bot-name').value='';await loadBots();show(v.message);});});
+$('config-form').addEventListener('submit',e=>{e.preventDefault();act(()=>save({name:$('config-name').value,prefix:$('prefix').value,greeting:$('greeting').value,modules:getChecks('module-list')}));});
+$('group-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const b=activeBot(),g=$('group-name').value.trim();if(!b||!g)return;await save({groups:[...(b.groups||[]),g]});$('group-name').value='';});});
+$('command-form').addEventListener('submit',e=>{e.preventDefault();act(()=>save({commands:getChecks('command-list')}));});
+for(const id of ['config-bot','group-bot','command-bot'])$(id).addEventListener('change',e=>setSelected(e.target.value));
+for(const b of document.querySelectorAll('[data-page],[data-go]'))b.addEventListener('click',()=>selectPage(b.dataset.page||b.dataset.go));
+for(const action of ['start','stop','restart'])$(action).addEventListener('click',()=>{if(action!=='start'&&!confirm('Confirmar ação na Íris principal sem desvincular o WhatsApp?'))return;act(async()=>{const v=await api('control',{action});await refresh(true);show(v.message);});});
+$('enroll').addEventListener('click',()=>act(async()=>{const v=await api('mfa-enroll',{});pendingFactor=v.factor;$('enroll-secret').textContent=v.secret;$('enroll-box').hidden=false;show(v.message);}));
+$('mfa-enroll-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const v=await api('mfa-verify',{factor:pendingFactor,code:$('mfa-enroll-code').value});pendingFactor=null;$('enroll-secret').textContent='';$('enroll-box').hidden=true;$('mfa-enroll-code').value='';await refresh(true);show(v.message);});});
+$('mfa-login-form').addEventListener('submit',e=>{e.preventDefault();act(async()=>{const factor=security.factors.find(f=>f.status==='verified');if(!factor)throw Error('Fator não encontrado.');const v=await api('mfa-verify',{factor:factor.id,code:$('mfa-login-code').value});$('mfa-login-code').value='';await refresh(true);show(v.message);});});
 $('copy').addEventListener('click',()=>act(async()=>{await navigator.clipboard.writeText($('account-id').value);show('Identificador copiado.');}));
-if(location.hash)history.replaceState(null,'',location.pathname);refresh(true);
+const theme=$('theme');function themeSet(v){if(!['iris','ocean','light'].includes(v))v='iris';document.documentElement.dataset.theme=v;theme.value=v;try{localStorage.setItem('iris-theme',v);}catch{}}
+theme.addEventListener('change',()=>themeSet(theme.value));try{themeSet(localStorage.getItem('iris-theme')||'iris');}catch{themeSet('iris');}
+if(location.hash){const p=new URLSearchParams(location.hash.slice(1));if(p.get('type')==='recovery')recoveryToken=p.get('access_token');history.replaceState(null,'',location.pathname);}
+if(recoveryToken)mode('reset');else refresh(true);
