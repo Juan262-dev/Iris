@@ -17,7 +17,7 @@ export async function categoryAllowed(state,category,role){
 }
 const noticeTemplates={regras:'Relembrete: consulte :regras e mantenha o respeito.',organizacao:'Aviso: mantenha o assunto adequado ao grupo.',jogos:'Aviso: respeite as regras dos jogos e os demais jogadores.',pausa:'Aviso: faça uma pausa nas brincadeiras se necessário.'};
 function snapshot(state){
-    const c=groupConfig(state);return {rules:String(state.rules||'').slice(0,400),custom:{...state.custom},welcome:state.welcome===true,welcomeText:state.community?.welcomeText||'',schedule:state.mega?.schedule?{...state.mega.schedule}:null,config:{theme:c.theme,spam:c.spam,roles:{...c.roles}}};
+    const c=groupConfig(state);return {rules:String(state.rules||'').slice(0,400),custom:{...state.custom},welcome:state.welcome===true,welcomeText:state.community?.welcomeText||'',schedule:state.mega?.schedule?{...state.mega.schedule}:null,config:{theme:c.theme,spam:c.spam,roles:{...c.roles}},config5:{commands:{...(state.config5?.commands||{})}}};
 }
 export async function adminFeature4({name,arg='',state,owner=false,role='membro',now=Date.now()}){
     if(!admin4.includes(name))return null;
@@ -39,7 +39,7 @@ export async function adminFeature4({name,arg='',state,owner=false,role='membro'
     if(name==='restaurarconfig'){
         if(!state.configBackup4?.data)return out('Nenhuma cópia interna. Use :salvarconfig.');
         if(arg!=='confirmar')return out('Para restaurar a cópia de '+new Date(state.configBackup4.at).toISOString().slice(0,10)+' use :restaurarconfig confirmar. Perfis e partidas não serão alterados.');
-        const b=state.configBackup4.data;const old=snapshot(state);state.rules=b.rules;state.custom={...b.custom};state.welcome=b.welcome;state.community??={};state.community.welcomeText=b.welcomeText;state.mega??={};if(b.schedule)state.mega.schedule={...b.schedule};else delete state.mega.schedule;state.config4={...b.config,roles:{...b.config.roles}};state.configBackup4={at:now,data:old};return out('Configurações restauradas. Cópia anterior disponível para desfazer.',true);
+        const b=state.configBackup4.data;const old=snapshot(state);state.rules=b.rules;state.custom={...b.custom};state.welcome=b.welcome;state.community??={};state.community.welcomeText=b.welcomeText;state.mega??={};if(b.schedule)state.mega.schedule={...b.schedule};else delete state.mega.schedule;state.config4={...b.config,roles:{...b.config.roles}};if(b.config5)state.config5={commands:{...b.config5.commands}};state.configBackup4={at:now,data:old};return out('Configurações restauradas. Cópia anterior disponível para desfazer.',true);
     }
     return out(null);
 }
