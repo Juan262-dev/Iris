@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {stopGame,stopTick,removeStop} from './stopGame.js';
-import {makeStopTickets,parseStopPrivate} from './stopPrivate.js';
+import {makeStopTickets,parseStopPrivate,parseStopQuote,formatStopAnswers,stopPrompt} from './stopPrivate.js';
 import {parseExtra} from './features.js';
 const a='a'.repeat(64),b='b'.repeat(64),c='c'.repeat(64),state={players:{[a]:{},[b]:{},[c]:{}},custom:{keep:true}};
 let now=Date.UTC(2026,10,27,10);
@@ -35,3 +35,25 @@ assert.equal(tickets.find(code).recipient,'1@s.whatsapp.net');assert.deepEqual(p
 const replacement=tickets.issue({jid:'g',actor:'a'});assert.equal(tickets.find(code),null);t+=180001;assert.equal(tickets.find(replacement),null);
 assert.equal(parseStopPrivate('hello'),null);assert.equal(parseStopPrivate(':stop responder '+code+' '+('a'.repeat(601))),null);
 console.log('Iris: STOP multi-round, duplicate points, voting, expiry, profile ranking and private-ticket tests passed');
+
+let clock=100;
+const forms=makeStopTickets({clock:()=>clock});
+const first=forms.issue({jid:'g1',actor:'a',recipient:'1@s.whatsapp.net',categories:['Nome','Animal','Fruta']});
+const second=forms.issue({jid:'g2',actor:'a',recipient:'1@s.whatsapp.net',categories:['Cor','Cidade','Objeto']});
+assert.equal(forms.bind(first,'msg-one'),true);assert.equal(forms.bind(second,'msg-two'),true);
+assert.equal(forms.quoted('msg-one').code,first);assert.equal(forms.quoted('msg-two').ticket.jid,'g2');
+assert.deepEqual(parseStopQuote({extendedTextMessage:{text:'Maria\nMacaco\nManga',contextInfo:{stanzaId:'msg-one'}}}),{messageId:'msg-one',answer:'Maria\nMacaco\nManga'});
+assert.equal(parseStopQuote({conversation:'Maria'}),null);
+assert.equal(parseStopQuote({extendedTextMessage:{text:'hello'}}),null);
+const categories=['Nome','Animal','Fruta'];
+assert.equal(formatStopAnswers('Maria\nMacaco\nManga',categories),'Maria | Macaco | Manga');
+assert.equal(formatStopAnswers('1. Maria\n2. Macaco\n3. Manga',categories),'Maria | Macaco | Manga');
+assert.equal(formatStopAnswers('Nome: Maria\nAnimal: Macaco\nFruta: Manga',categories),'Maria | Macaco | Manga');
+assert.equal(formatStopAnswers('Maria\n-\nManga',categories),'Maria | - | Manga');
+assert.equal(formatStopAnswers('Maria | Macaco | Manga',categories),'Maria | Macaco | Manga');
+assert.equal(formatStopAnswers('Maria\nMacaco',categories),null);
+assert.equal(formatStopAnswers('2. Maria\n1. Macaco\n3. Manga',categories),null);
+assert.equal(formatStopAnswers('Animal: Maria\nNome: Macaco\nFruta: Manga',categories),null);
+const prompt=stopPrompt({round:1,letter:'m',categories});assert.match(prompt,/1\. Nome:/);assert.match(prompt,/Responda a ESTA mensagem/);assert.ok(!prompt.includes(first));
+forms.remove(first);assert.equal(forms.quoted('msg-one'),null);assert.equal(forms.quoted('msg-two').code,second);clock+=180001;assert.equal(forms.quoted('msg-two'),null);
+console.log('Iris: STOP quoted replies, multiline and numbered answers, message binding and expiry tests passed');
