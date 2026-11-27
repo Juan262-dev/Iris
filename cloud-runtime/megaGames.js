@@ -36,9 +36,9 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         if(activeOnly&&(!g?.started||g.ids[g.turn]!==id))return out(null);
         if(arg==='novo'){
             if(g)return out('Já existe uma mesa de UNO.');
-            m.uno={ids:[id],started:false,expires:now+600000};return out('🃏 UNO criado. Amigos: !iris uno entrar. Criador: !iris uno iniciar (2–6 jogadores). Variante simplificada: mão pública sob solicitação, sem apostas.',true);
+            m.uno={ids:[id],started:false,expires:now+600000};return out('🃏 UNO criado. Amigos: :uno entrar. Criador: :uno iniciar (2–6 jogadores). Variante simplificada: mão pública sob solicitação, sem apostas.',true);
         }
-        if(!g)return out(activeOnly?null:'Use !iris uno novo.');
+        if(!g)return out(activeOnly?null:'Use :uno novo.');
         if(arg==='entrar'){
             if(g.started||g.ids.includes(id)||g.ids.length>=6)return out('Não é possível entrar.');
             g.ids.push(id);return out(label(id)+' entrou. '+g.ids.length+'/6.',true);
@@ -50,7 +50,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
             g.started=true;g.deck=deck(choose);g.hands={};g.discard=[];g.turn=0;g.dir=1;g.expires=now+86400000;
             for(const k of g.ids){g.hands[k]=[];draw(g,k,7,choose);}
             const i=g.deck.findIndex(c=>/^[vagb]\d$/.test(c));const card=g.deck.splice(i,1)[0];g.discard=[card];g.color=card[0];
-            return out(unoBoard(g)+'\n!iris uno mao mostra suas cartas no grupo. Sem cartas secretas.',true);
+            return out(unoBoard(g)+'\n:uno mao mostra suas cartas no grupo. Sem cartas secretas.',true);
         }
         if(!g.started)return out('Aguardando início.');
         if(arg==='mao')return out('🃏 Suas cartas (visíveis no grupo): '+g.hands[id].map(c=>c+' ('+cardLabel(c)+')').join(', '));
@@ -76,9 +76,9 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         if(activeOnly&&(!g?.boards||g.ids[g.turn]!==id))return out(null);
         if(arg==='desafio'){
             if(g)return out('Já existe uma partida.');
-            m.naval={ids:[id],expires:now+600000};return out('🚢 Batalha naval: outro jogador envia !iris naval aceitar.',true);
+            m.naval={ids:[id],expires:now+600000};return out('🚢 Batalha naval: outro jogador envia :naval aceitar.',true);
         }
-        if(!g)return out(activeOnly?null:'Use !iris naval desafio.');
+        if(!g)return out(activeOnly?null:'Use :naval desafio.');
         if(arg==='aceitar'){
             if(g.ids.length!==1||g.ids[0]===id)return out('Desafio indisponível.');
             g.ids.push(id);g.boards={};g.shots={};g.turn=0;g.expires=now+86400000;for(const k of g.ids){g.boards[k]=fleet(choose);g.shots[k]={};}
@@ -97,14 +97,14 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         return out({image:await navalImage(g),caption:(hit?'Acertou!':'Água!')+'\n'+(won?label(id)+' venceu!':'Vez de '+label(g.ids[g.turn]))},true);
     }
     if(name==='rpg'){
-        const p=state.players[id];if(!p)return out('Crie seu perfil: !iris perfil.');
+        const p=state.players[id];if(!p)return out('Crie seu perfil: :perfil.');
         if(arg==='mapa')return out('🗺️ '+Object.entries(maps).map(([k,v])=>k+' — '+v).join('\n'));
         if(arg.startsWith('classe ')){
             const k=arg.slice(7);if(!Object.hasOwn(classes,k))return out('Classes: '+Object.keys(classes).join(', '));
-            p.rpg??={xp:0,bag:{},place:'vila'};p.rpg.class=k;return out('Classe: '+classes[k]+'. !iris rpg viajar bosque',true);
+            p.rpg??={xp:0,bag:{},place:'vila'};p.rpg.class=k;return out('Classe: '+classes[k]+'. :rpg viajar bosque',true);
         }
-        const r=p.rpg;if(!r)return out('Use !iris rpg classe explorador.');
-        if(arg.startsWith('viajar ')){const k=arg.slice(7);if(!Object.hasOwn(maps,k))return out('Use !iris rpg mapa.');r.place=k;return out('Chegou a '+maps[k]+'. Envie !iris rpg explorar.',true);}
+        const r=p.rpg;if(!r)return out('Use :rpg classe explorador.');
+        if(arg.startsWith('viajar ')){const k=arg.slice(7);if(!Object.hasOwn(maps,k))return out('Use :rpg mapa.');r.place=k;return out('Chegou a '+maps[k]+'. Envie :rpg explorar.',true);}
         if(arg==='explorar'){
             const day=new Date(now).toISOString().slice(0,10);if(r.day===day)return out('Exploração diária concluída.');
             r.day=day;r.xp+=5;const item={vila:'flor',bosque:'semente',arquivo:'pergaminho'}[r.place];r.bag[item]=(r.bag[item]||0)+1;p.xp+=2;p.coins=Math.min(1000000,p.coins+8);
@@ -116,7 +116,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
     let t=m.tournament;if(t&&t.expires<=now){delete m.tournament;t=null;}
     if(arg==='novo'){
         if(!owner)return out(null);if(t)return out('Campeonato já existe.');
-        m.tournament={ids:[],round:[],winners:[],started:false,expires:now+7*86400000};return out('🏆 Campeonato de xadrez: !iris campeonato entrar. Organizador inicia com 2, 4 ou 8 jogadores.',true);
+        m.tournament={ids:[],round:[],winners:[],started:false,expires:now+7*86400000};return out('🏆 Campeonato de xadrez: :campeonato entrar. Organizador inicia com 2, 4 ou 8 jogadores.',true);
     }
     if(!t)return out('Nenhum campeonato ativo.');
     if(arg==='entrar'){
@@ -134,7 +134,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         if(!t.started||!/^[a-f0-9]{6}$/.test(code)||candidates.length!==1)return out('Informe o código do vencedor de uma partida concluída.');
         const k=candidates[0],i=t.round.findIndex(pair=>pair.includes(k));t.round.splice(i,1);t.winners.push(k);
         if(!t.round.length){if(t.winners.length===1){delete m.tournament;return out('🏆 Campeão: '+label(k)+'! Troféu simbólico.',true);}for(let j=0;j<t.winners.length;j+=2)t.round.push(t.winners.slice(j,j+2));t.winners=[];}
-        return out('Resultado informado pelo organizador. Use !iris campeonato para ver as chaves.',true);
+        return out('Resultado informado pelo organizador. Use :campeonato para ver as chaves.',true);
     }
     if(arg==='cancelar'&&owner){delete m.tournament;return out('Campeonato encerrado.',true);}
     return out(t.started?'🏆 Chaves restantes:\n'+t.round.map(p=>p.map(label).join(' × ')).join('\n'):'Inscritos: '+t.ids.map(label).join(', '));
