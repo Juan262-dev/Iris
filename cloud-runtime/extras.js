@@ -15,8 +15,9 @@ export function makeExtras(games=new Map()) {
         if(name==='numero'){
             if(!actor)return 'Participante não identificado.';
             const key=jid+':'+actor;
+            if(!arg||arg==='status'){const old=games.get(key);if(old?.expires>Date.now())return '🔢 Partida ativa. Restam '+(8-old.tries)+' tentativas. Intervalo: '+(old.low||1)+'–'+(old.high||100)+'.';if(arg==='status')return 'Use :numero novo.';}
             if(!arg||arg==='novo'){
-                games.set(key,{answer:randomInt(1,101),tries:0,expires:Date.now()+600000});
+                games.set(key,{answer:randomInt(1,101),tries:0,low:1,high:100,guesses:[],expires:Date.now()+600000});
                 if(games.size>200)games.delete(games.keys().next().value);
                 return '🔢 Adivinhe um número de 1 a 100. Você tem 8 tentativas. Use :numero 50.';
             }
@@ -24,9 +25,9 @@ export function makeExtras(games=new Map()) {
             const g=games.get(key);
             if(!g||g.expires<Date.now()){games.delete(key);return 'Use :numero para começar.';}
             if(!/^\d{1,3}$/.test(arg)||Number(arg)<1||Number(arg)>100)return 'Escolha um número de 1 a 100.';
-            const n=Number(arg);g.tries++;
+            const n=Number(arg);g.guesses??=[];if(g.guesses.includes(n))return 'Número já tentado. Restam '+(8-g.tries)+' tentativas.';g.guesses.push(n);g.tries++;if(n<g.answer)g.low=Math.max(g.low||1,n+1);if(n>g.answer)g.high=Math.min(g.high||100,n-1);
             if(n===g.answer||g.tries>=8){games.delete(key);return n===g.answer?'🎉 Você acertou em '+g.tries+' tentativas!':'Fim de jogo. O número era '+g.answer+'.';}
-            return (n<g.answer?'⬆️ Maior!':'⬇️ Menor!')+' Restam '+(8-g.tries)+' tentativas.';
+            return (n<g.answer?'⬆️ Maior!':'⬇️ Menor!')+' Restam '+(8-g.tries)+' tentativas. Intervalo: '+(g.low||1)+'–'+(g.high||100)+'.';
         }
         return null;
     };
