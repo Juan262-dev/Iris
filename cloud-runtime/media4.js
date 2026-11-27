@@ -38,13 +38,13 @@ const helps={
 export async function premiumMenu(category='',theme='iris',fallback=''){
     category=String(category||'').toLowerCase();if(category==='fun'||category==='brincadeiras')category='diversao';
     const [bg,panel,accent]=groupThemes[theme]||groupThemes.iris;
-    const title=category?'ÍRIS • '+category.toUpperCase():'ÍRIS CLOUD 5.0';
-    const lines=category?((Object.hasOwn(sections,category)?sections[category]:null)||['Categorias: '+Object.keys(sections).join(', ')]):[['GERAL',' :menu geral'],['JOGOS',' :menu jogos'],['ECONOMIA',' :menu economia'],['ESTÚDIO',' :menu midia'],['ÍRIS FUN',' :menu diversao'],['ADMINISTRAÇÃO',' :menu admin']].map(x=>x.join(' — '));
+    const title=category?'ÍRIS • '+category.toUpperCase():'ÍRIS CLOUD 6.0';
+    const lines=category==='infinity'?['Mapa • :mapainfinity','Jogos • :imobiliario novo | :trilha novo','Cooperação • :expedicao novo | :reliquia novo','Estudos • :simulado novo ciencia','Guildas • :guilda | :projetoinfinity','Estúdio • :cartaoarte texto']:category?((Object.hasOwn(sections,category)?sections[category]:null)||['Categorias: '+Object.keys(sections).join(', ')]):[['INFINITY',' :infinity'],['GERAL',' :menu geral'],['JOGOS',' :menu jogos'],['ECONOMIA',' :menu economia'],['ESTÚDIO',' :menu midia'],['ÍRIS FUN',' :menu diversao'],['ADMINISTRAÇÃO',' :menu admin']].map(x=>x.join(' — '));
     const h=145+lines.length*60;
     const body=[r(0,0,700,h,bg),r(18,18,664,76,panel),txt(350,65,title,32,accent,true)];
     lines.forEach((line,i)=>{const y=110+60*i;body.push(r(20,y,660,50,panel),txt(36,y+33,line,20));});
     body.push(txt(350,h-14,'Prefixo : • :menutexto para a lista completa',15,accent,true));
-    return {image:await sharp(svg(700,h,body.join(''))).png().toBuffer(),caption:fallback||'Íris Cloud 5.0 • '+(category||'menu principal')+'\n:menutexto para todos os comandos.'};
+    return {image:await sharp(svg(700,h,body.join(''))).png().toBuffer(),caption:fallback||'Íris Cloud 6.0 • '+(category||'menu principal')+'\n:menutexto para todos os comandos.'};
 }
 export async function helpCard(arg,theme){
     const key=String(arg).replace(/^:/,'').toLowerCase(),help=Object.hasOwn(helps,key)?helps[key]:null;if(!help)return 'Cartões disponíveis: '+Object.keys(helps).join(', ')+'. Use :ajuda para os demais comandos.';
