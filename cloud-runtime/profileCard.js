@@ -1,5 +1,4 @@
 import sharp from 'sharp';
-import { shop } from './localFun.js';
 
 export const profileCommands=['nomeperfil','perfilfoto','perfilbanner','perfiltema','perfilmoldura','perfiltitulo','perfilpublico','perfilstats','perfilvisual'];
 const out=(text,changed=false)=>({text,changed});
@@ -68,7 +67,7 @@ export async function ownProfileImage(msg,b,kind){
 }
 export async function renderProfile(state,id){
     const p=state.players[id],card=p.card||{},stats=gameStats(state,id),name=displayName(state,id);
-    const t=unlocked(p,stats,themes[card.theme])&&Object.hasOwn(themes,card.theme)?themes[card.theme]:themes.iris;
+    const t=Object.hasOwn(themes,card.theme)&&unlocked(p,stats,themes[card.theme])?themes[card.theme]:themes.iris;
     const frame=Object.hasOwn(frames,card.frame)&&unlocked(p,stats,frames[card.frame])?frames[card.frame]:frames.simples;
     const title=Object.hasOwn(titles,card.title)&&unlocked(p,stats,titles[card.title])?titles[card.title].label:'Iniciante';
     const photo=safeAsset(card.photo,14000),banner=safeAsset(card.banner,26000);
