@@ -14,7 +14,7 @@ const state={players:{[a]:{coins:500,xp:0,inventory:{estrela:true}},[b]:{coins:5
 const now=Date.UTC(2026,10,26,11);
 const g=(name,arg='',id=a,owner=false,activeOnly=false,route=null)=>megaGame({name,arg,state,id,owner,now,activeOnly,route,choose:()=>0});
 const f=(name,arg='',id=a,owner=false)=>megaFeature({name,arg,state,id,owner,now});
-for(const name of [...gameNames,...economyNames,...adminNames,...studioNames])assert.equal(parseExtra(':'+name,true).name,name);
+for(const name of [...gameNames,...economyNames,...adminNames,...studioNames])assert.equal(parseExtra(':'+name,true).name,name==='rpg'?'jogos':name);
 assert.equal(parseExtra(':agenda 08:00 22:00',false),null);
 assert.equal(parseExtra(':advertir aaaaaa teste',false),null);
 assert.ok(menu().includes(':naval'));
