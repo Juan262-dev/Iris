@@ -16,6 +16,7 @@ import { originalMedia,searchOriginal,tts } from './originalCompat.js';
 import { ownProfileImage } from './profileCard.js';
 import { funMediaNames,runFunMedia,directFunImage } from './funMedia.js';
 import { media4,mediaFeature4 } from './media4.js';
+import { media5,mediaFeature5 } from './media5.js';
 import { settings,request } from '../lib/Initialize/cloudStorage.js';
 import { unoRoute,dispatchUno } from './unoVisual.js';
 import { studioCommand,studioNames } from './studio.js';
@@ -30,7 +31,7 @@ export async function startHeadlessBot(restartCount = 0) {
     const features = makeFeatures();
     setRuntime('whatsapp','conectando');
     const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
-    const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4]);
+    const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5]);
     let openedAt=0;
     const pairingNumber = process.env.IRIS_PAIRING_PHONE || '';
     const auth = await useCloudAuthState('0', baileys);
@@ -152,7 +153,7 @@ export async function startHeadlessBot(restartCount = 0) {
             catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use :s.'},{quoted:msg});}
         }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
     }
-    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,rawName:msg.pushName||(owner?sock.user?.name:null),loadProfileAsset:kind=>ownProfileImage(msg,baileys,kind),funMedia:(m,name,arg)=>runFunMedia(m,baileys,name,arg),newMedia:(m,name,arg)=>mediaFeature4(m,baileys,name,arg),loadPackImage:()=>directFunImage(msg,baileys),sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg),advancedMedia:(m,name,arg)=>media3(m,baileys,name,arg),original:async(m,name,arg)=>{try{return name==='tts'?await tts(arg):name==='renomear'?await studioCommand(m,baileys,name,arg):await searchOriginal(name,arg);}catch{return '🌸 Não foi possível concluir. Use um tema disponível ou texto de até 200 caracteres.';}},unoRoute:((['uno','domino','unobot'].includes(extra.name)&&extra.arg==='pv')||(extra.name==='unobot'&&extra.arg==='novo'))?unoRoute(owner?sock.user?.id:msg.key?.participant):null});
+    const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,rawName:msg.pushName||(owner?sock.user?.name:null),loadProfileAsset:kind=>ownProfileImage(msg,baileys,kind),funMedia:(m,name,arg)=>runFunMedia(m,baileys,name,arg),newMedia:(m,name,arg)=>mediaFeature4(m,baileys,name,arg),professionalMedia:(m,name,arg)=>mediaFeature5(m,baileys,name,arg),loadPackImage:()=>directFunImage(msg,baileys),sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg),advancedMedia:(m,name,arg)=>media3(m,baileys,name,arg),original:async(m,name,arg)=>{try{return name==='tts'?await tts(arg):name==='renomear'?await studioCommand(m,baileys,name,arg):await searchOriginal(name,arg);}catch{return '🌸 Não foi possível concluir. Use um tema disponível ou texto de até 200 caracteres.';}},unoRoute:((['uno','domino','unobot'].includes(extra.name)&&extra.arg==='pv')||(extra.name==='unobot'&&extra.arg==='novo'))?unoRoute(owner?sock.user?.id:msg.key?.participant):null});
     const fresh=msg=>{
         const ts=Number(msg.messageTimestamp||0);
         return Number.isFinite(ts)&&Math.abs(Date.now()/1000-ts)<=120;
@@ -225,10 +226,10 @@ export async function startHeadlessBot(restartCount = 0) {
                     await chats.set(jid, false);
                     response = '🌸 Íris — desativada neste grupo.';
                 } else if (shortMove) {
-                    try { response=await features.chessMove({jid,actor,arg:plain}); if(!response&&activity?.name==='uno')response=await features.activity({jid,actor,command:activity}); }
+                    try { response=await features.chessMove({jid,actor,arg:plain,sock,msg,owner}); if(!response&&activity?.name==='uno')response=await features.activity({jid,actor,command:activity,sock,msg,owner}); }
                     catch { console.error('Iris: chess shorthand processing failed'); }
                 } else if (activity) {
-                    try{response=await features.activity({jid,actor,command:activity});}
+                    try{response=await features.activity({jid,actor,command:activity,sock,msg,owner});}
                     catch{console.error('Iris: short activity processing failed');}
                 } else if (extra&&mediaNames.has(extra.name)){
                     const accepted=mediaQueue.add(async()=>{
