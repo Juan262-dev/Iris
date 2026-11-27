@@ -23,8 +23,8 @@ assert.equal((await g('sudoku','jogar '+(Math.floor(cell/9)+1)+' '+(cell%9+1)+' 
 assert.ok((await g('termo','novo')).text.image);assert.equal((await g('termo','tentar amigo')).changed,true);assert.equal(state.players[a].stats5.termo.wins,1);
 assert.match((await g('historicopartidas')).text,/termo/);
 await g('ludo','novo');await g('ludo','entrar',b);assert.ok((await g('ludo','iniciar')).text.image);
-assert.equal((await g('ludo','dado',a,{choose:n=>n-1})).changed,true);
-assert.equal((await g('ludo','mover 1')).changed,true);assert.equal(state.games5.ludo.pieces[a][0],0);
+assert.equal((await g('ludo','d',a,{choose:n=>n-1})).changed,true);
+assert.equal((await g('ludo','1')).changed,true);assert.equal(state.games5.ludo.pieces[a][0],0);
 const g4=(name,arg,id=a,route=null)=>game4({name,arg,state,id,now,choose:pick,route});
 await g4('unobot','novo',a,'100001@s.whatsapp.net');
 const uno=state.games4.unobot[a];assert.ok(uno.deck.concat(uno.hands[a],uno.hands['iris-bot']).includes('c4'));
