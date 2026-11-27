@@ -58,6 +58,9 @@ node --check cloud-runtime/manager-web/app.js
 node cloud-runtime/manager.test.js
 node --check cloud-runtime/managerV2.js
 node cloud-runtime/managerV2.test.js
+node --check lib/Initialize/localStorage.js
+node --check cloud-runtime/privateLocal.js
+node cloud-runtime/privateLocal.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
