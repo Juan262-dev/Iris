@@ -13,7 +13,7 @@ import { seal,unseal,settings } from '../lib/Initialize/cloudStorage.js';
 const a='aaaaaa123',b='bbbbbb123',c='cccccc123',d='dddddd123',now=Date.UTC(2026,10,27,12),pick=()=>0;
 const state={players:Object.fromEntries([a,b,c,d].map(k=>[k,{coins:500,xp:0,inventory:{estrela:true},role:'cientista'}])),custom:{}};
 for(const name of [...games5,...community5,...media5,collage5,'aplaudir','parabenizar'])assert.equal(parseExtra(':'+name,true).name,name);
-assert.equal(parseExtra('!sudoku',true),null);assert.match(menu(),/Cloud 5\.0/);
+assert.equal(parseExtra('!sudoku',true),null);assert.match(menu(),/Cloud 6\.0/);
 assert.deepEqual(scoreWord('arara','amigo'),[2,0,0,0,0]);
 for(const level of ['facil','medio','dificil']){const q=makeSudoku(level,pick);assert.equal(countSolutions(q.b),1);assert.ok(q.b.filter(x=>!x).length>=30);}
 const g=(name,arg='',id=a,extra={})=>game5({name,arg,state,id,now,choose:pick,...extra});
