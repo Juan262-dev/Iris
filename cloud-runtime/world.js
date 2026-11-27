@@ -1,18 +1,19 @@
 import { randomBytes } from 'node:crypto';
 import {position,allRegions,allRoads} from './worldMap.js';
 import {adventureView,validAdventureArg} from './worldAdventure.js';
+import {livingView,validLivingArg} from './worldLiving.js';
 const token=()=>randomBytes(24).toString('hex');
 export const isWorldToken=v=>typeof v==='string'&&/^[a-f0-9]{48}$/.test(v);
 export const worldPlaces=['Praça','Biblioteca','Jardim','Observatório','Oficina','Museu','Estação','Lago','Mercado'];
 const items=['livro','semente','estrela','mapa','engrenagem','fóssil','bilhete','concha','tecido'];
 export const worldActions={viajarworld:/^(?:[1-9]|1[0-8])$/,explorar:/^[1-9]$/,construir:/^[1-9]$/,npc:/^[1-9]$/,oficina:/^(produzir|profissao (artesao|botanico|pesquisador|bibliotecario))$/,empresaeco:/^produzir$/,projetoinfinity:/^ajudar$/,missaoinfinity:/^(|concluir)$/};
-export function validWorldAction(name,arg){return name==='aventuraworld'?validAdventureArg(arg):typeof name==='string'&&Object.hasOwn(worldActions,name)&&typeof arg==='string'&&worldActions[name].test(arg);}
+export function validWorldAction(name,arg){return name==='offline'?validLivingArg(arg):name==='aventuraworld'?validAdventureArg(arg):typeof name==='string'&&Object.hasOwn(worldActions,name)&&typeof arg==='string'&&worldActions[name].test(arg);}
 const num=v=>Number.isSafeInteger(v)&&v>=0?v:0;
 export function worldView(state,id,now=Date.now()){
  const p=state.players?.[id];if(!p)return null;
  const x=p.infinity||{},d=state.infinity||{},today=new Date(now).toISOString().slice(0,10);
  const adventure=adventureView(state,id,now);
- return {adventure,position:position(p),roads:allRoads,regions:allRegions,xp:num(p.xp),coins:num(p.coins),level:1+Math.floor(num(p.xp)/10),visits:num(x.visits),job:['artesao','botanico','pesquisador','bibliotecario'].includes(x.job)?x.job:null,places:worldPlaces.map((name,i)=>({id:i+1,name,item:items[i],level:Math.min(5,num(d.buildings?.[i])),owned:num(x.collection?.[items[i]]),visited:x.exploreDay===today&&Array.isArray(x.visited)&&x.visited.includes(i+1)})).concat(allRegions.slice(9).map(r=>({id:r.id,name:r.name,item:'materiais',level:num(adventure.outposts[r.id]),owned:0,visited:adventure.areaVisited.some(v=>v.startsWith(r.id+'-'))}))),contributions:num(x.contributions),project:num(d.project?.count),companyLevel:num(x.company?.level)};
+ return {living:livingView(p,now),adventure,position:position(p),roads:allRoads,regions:allRegions,xp:num(p.xp),coins:num(p.coins),level:1+Math.floor(num(p.xp)/10),visits:num(x.visits),job:['artesao','botanico','pesquisador','bibliotecario'].includes(x.job)?x.job:null,places:worldPlaces.map((name,i)=>({id:i+1,name,item:items[i],level:Math.min(5,num(d.buildings?.[i])),owned:num(x.collection?.[items[i]]),visited:x.exploreDay===today&&Array.isArray(x.visited)&&x.visited.includes(i+1)})).concat(allRegions.slice(9).map(r=>({id:r.id,name:r.name,item:'materiais',level:num(adventure.outposts[r.id]),owned:0,visited:adventure.areaVisited.some(v=>v.startsWith(r.id+'-'))}))),contributions:num(x.contributions),project:num(d.project?.count),companyLevel:num(x.company?.level)};
 }
 export function makeWorldSessions({verify,operate,clock=Date.now,limit=160}){
  const codes=new Map(),sessions=new Map(),claims=new Map();
