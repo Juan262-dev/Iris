@@ -12,7 +12,7 @@ const identity={jid:'group-a',actor:'actor-a',route:'private-a',id:a};
 const other={jid:'group-a',actor:'actor-b',route:'private-b',id:b};
 const run=(id,name,arg)=>infinityFeature({name,arg,state,id,now});
 const world=makeWorldSessions({clock:()=>now,verify:async()=>member,operate:async(i,command)=>{if(command)await run(i.id,command.name,command.arg);return state.players[i.id]?{view:worldView(state,i.id,now)}:null;}});
-assert.equal(parseExtra(':world',false).name,'world');assert.match(menu('infinity'),/:world sair/);
+assert.equal(parseExtra(':world',false).name,'jogos');assert.doesNotMatch(menu('infinity'),/:world sair/);
 assert.equal(validWorldAction('explorar','1'),true);assert.equal(validWorldAction('explorar','10'),false);assert.equal(validWorldAction('backupinfinity','salvar'),false);assert.equal(validWorldAction('__proto__',''),false);
 const code=world.issue(identity);assert.match(code,/^[a-f0-9]{48}$/);assert.equal((await world.rpc({op:'login',code:'wrong'})).status,401);
 const login=await world.rpc({op:'login',code});assert.equal(login.status,200);assert.equal(login.data.view.coins,7);assert.equal((await world.rpc({op:'login',code})).status,401);
