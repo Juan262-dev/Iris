@@ -15,7 +15,7 @@ import { media3,media3Names } from './media3.js';
 import { unoRoute,dispatchUno } from './unoVisual.js';
 import { studioCommand,studioNames } from './studio.js';
 import { convertMedia,converterNames } from './converters.js';
-import { setRuntime,makeJobQueue,reconnectDelay } from './runtimeStatus.js';
+import { setRuntime,makeJobQueue,reconnectDelay,incrementRuntime } from './runtimeStatus.js';
 
 export async function startHeadlessBot(restartCount = 0) {
     if (process.env.IRIS_BOT_ENABLED !== 'true') return;
@@ -156,13 +156,21 @@ export async function startHeadlessBot(restartCount = 0) {
     const getActor=msg=>msg.key?.fromMe===true?(sock.user?.id||'owner').split(':')[0]+'@self':msg.key?.participant;
     let pingPending=0;
     let nextPingLog=0;
+    let pendingBatches=0;
     sock.ev.on('messages.upsert', ({ messages, type }) => {
         if (closed || type !== 'notify') return;
         const normal=[];
         for(const msg of messages||[]){
             const jid=msg.key?.remoteJid,id=msg.key?.id;
             const plain=msg.message?.conversation||msg.message?.extendedTextMessage?.text||'';
-            if(!jid?.endsWith('@g.us')||String(plain).trim().toLowerCase()!==':ping'){normal.push(msg);continue;}
+            if(!jid?.endsWith('@g.us'))continue;
+            if(String(plain).trim().toLowerCase()!==':ping'){
+                const text=plain||msg.message?.imageMessage?.caption||msg.message?.documentMessage?.caption||msg.message?.videoMessage?.caption||'';
+                const enabled=chats.has(jid),owner=msg.key?.fromMe===true;
+                if(!fresh(msg)||(!decideCommand({jid,fromMe:owner,text,enabled})&&!(enabled&&(parseExtra(text,owner)||isChessMove(plain)||shortActivity(plain)||short3(plain)||megaShort(plain)))))continue;
+                if(normal.length<30)normal.push(msg);else incrementRuntime('dropped');
+                continue;
+            }
             if(!id||!fresh(msg)||!remember(jid,id))continue;
             const enabled=chats.has(jid),actor=getActor(msg);
             const log=Date.now()>=nextPingLog;
@@ -175,6 +183,8 @@ export async function startHeadlessBot(restartCount = 0) {
                 .finally(()=>{pingPending--;});
         }
         if(!normal.length)return;
+        if(pendingBatches>=12){incrementRuntime('dropped');return;}
+        pendingBatches++;setRuntime('commands',pendingBatches);
         commandQueue = commandQueue.then(async () => {
             for (const msg of normal) {
                 if (closed) return;
@@ -197,6 +207,7 @@ export async function startHeadlessBot(restartCount = 0) {
                 const actor = owner ? (sock.user?.id || 'owner').split(':')[0] + '@self' : msg.key?.participant;
                 if (action !== 'off' && action !== 'on' && (!actor || !allowCommand(jid,actor))) continue;
                 let response;
+                const commandStarted=Date.now();
                 if (action === 'on') {
                     await chats.set(jid, true);
                     response = '🌸 Íris — bot ativado neste grupo. Respondo aos comandos iniciados por : e a respostas curtas de atividades ativas. Use somente com a autorização dos participantes. O responsável pode desativar com :off.';
@@ -219,15 +230,16 @@ export async function startHeadlessBot(restartCount = 0) {
                     else continue;
                 } else if (extra) {
                     try { response = await runFeature(extra,jid,actor,msg,owner); }
-                    catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; console.error('Iris: individual command failed'); }
+                    catch { response = '🌸 Não foi possível executar este comando. Tente novamente.'; incrementRuntime('errors');console.error('Iris: individual command failed'); }
                 }
                 if(!closed&&response){
                     try{
                         if(action==='off')await sock.sendMessage(jid,{text:response},{quoted:msg});
                         else await deliver(jid,response,msg);
-                    }catch{console.error('Iris: individual response delivery failed');}
+                    }catch{incrementRuntime('errors');console.error('Iris: individual response delivery failed');}
                 }
+                incrementRuntime('processed');if(Date.now()-commandStarted>10000)incrementRuntime('slow');
             }
-        }).catch(() => console.error('Iris: command processing failed; check storage and connection.'));
+        }).catch(() => {incrementRuntime('errors');console.error('Iris: command processing failed; check storage and connection.');}).finally(()=>{pendingBatches--;setRuntime('commands',pendingBatches);});
     });
 }
