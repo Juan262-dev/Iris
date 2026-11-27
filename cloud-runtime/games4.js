@@ -37,7 +37,6 @@ async function board2048(g){
 }
 function award(state,id,key,points=1){const p=state.players[id];if(!p)return;const month=new Date().toISOString().slice(0,7);if(p.season4?.month!==month)p.season4={month,points:0};p.season4.points=Math.min(100000,p.season4.points+points);p.games4??={};p.games4[key]=Math.min(100000,(p.games4[key]||0)+1);}
 function ownGame(db,name,id,now){const all=db[name]??={};for(const [k,g] of Object.entries(all))if(g.expires<=now)delete all[k];return all;}
-const cross={rows:['LUA','U##','A##'],clues:['1 horizontal: satélite da Terra (3)','1 vertical: satélite da Terra (3)'],words:['lua','lua']};
 const puzzles=[{rows:['SOL','A#U','L#A'],clues:['1H: estrela do nosso sistema (3)','1V: tempero comum (3)','2V: satélite natural (3)'],words:['sol','sal','lua']}];
 export async function game4({name,arg='',state,id,now=Date.now(),choose=randomInt,route=null,owner=false}){
     if(!games4.includes(name))return null;
@@ -57,7 +56,7 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
     }
     if(name==='unobot'){
         const all=ownGame(db,name,id,now);let g=all[id];
-        const pack=async notice=>({unoDelivery:{public:await unoPublic(g,notice+'\n:unobot pos 1 | comprar | mao | sair'),private:await unoPrivate(g,id)}});
+        const pack=async notice=>{const privateHands=await unoPrivate(g,id);for(const item of privateHands)item.content.caption=item.content.caption.replace(/Jogue no grupo:[^\n]*/,'Jogue no grupo: :unobot pos 1 ou :unobot comprar.');return {unoDelivery:{public:await unoPublic(g,notice+'\n:unobot pos 1 | comprar | mao | sair'),private:privateHands}};};
         if(arg==='sair'){delete all[id];return out('UNO solo encerrado; autorização privada removida.',true);}
         if(arg==='novo'){if(g)return out('Já existe uma partida.');if(Object.keys(all).length>=30)return out('Limite de partidas.');if(!validUnoRoute(route))return out('Não consegui validar seu contato.');g=all[id]={ids:[id,bot],names:{[id]:label(id),[bot]:'Íris'},routes:{[id]:route},hands:{[id]:[],[bot]:[]},deck:shuffle(numbers.slice(),choose),discard:[],dir:1,turn:0,expires:now+day};for(const k of g.ids)for(let j=0;j<7;j++)g.hands[k].push(g.deck.pop());const top=g.deck.pop();g.discard.push(top);g.color=top[0];return out(await pack('UNO solo numérico (sem cartas especiais). Sua mão será enviada somente no privado.'),true);}
         if(!g)return out('Use :unobot novo para jogar e autorizar a mão no privado.');
@@ -75,7 +74,7 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         g.expires=now+day;return out(await pack(c?'Íris jogou uma carta.':'Íris comprou uma carta.'),true);
     }
     let g=db[name];if(g&&g.expires<=now){delete db[name];g=null;}
-    if(arg==='sair'){if(g?.ids?.[0]===id||owner){delete db[name];return out('Partida encerrada.',true);}return out('Somente o criador encerra.');}
+    if(arg==='sair'){if(g?.ids?.[0]===id||name==='domino'&&g?.ids?.includes(id)||owner){delete db[name];return out('Partida encerrada.',true);}return out('Somente o criador encerra.');}
     if(name==='domino'){
         if(arg==='novo'||arg==='desafio'){if(g)return out('Já existe um dominó.');db[name]={ids:[id],routes:{},expires:now+600000};return out('Dominó de dois jogadores. :domino entrar; cada um :domino pv; criador :domino iniciar.',true);}
         if(!g)return out('Use :domino novo.');
@@ -118,11 +117,11 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
     if(!g)return out('Use :'+name+' novo.');
     if(arg==='entrar'){if(g.started||g.ids.includes(id)||g.ids.length>=12)return out('Inscrição indisponível.');g.ids.push(id);g.scores[id]=0;g.marks[id]=[];return out('Inscrição concluída.',true);}
     const score=()=>Object.entries(g.scores).sort((a,b)=>b[1]-a[1]).map(([k,v])=>label(k)+': '+v).join('\n');
-    if(arg==='placar')return out(score());
+    if(arg==='placar')return out(g.started&&Object.keys(g.answered).length?'Placar disponível ao fim da rodada.':score());
     if(arg==='iniciar'){if(g.ids[0]!==id||g.started)return out('Somente o criador inicia.');g.started=true;g.expires=now+day;return out(card(questions[0])+'\n:'+name+' resposta 1',true);}
     if(!g.started)return out('Aguardando início.');
     const m=/^resposta ([123])$/.exec(arg);
-    if(m){if(!g.ids.includes(id)||Object.hasOwn(g.answered,id))return out('Inscrição necessária; uma resposta por rodada.');const correct=Number(m[1])-1===questions[g.round][2];g.answered[id]=true;if(correct){g.scores[id]++;g.marks[id].push(g.round);award(state,id,name);if(isBingo&&g.marks[id].length===3){const result='Bingo educativo concluído por '+label(id)+'!\n'+score();delete db[name];return out(result,true);}}if(g.ids.every(k=>g.answered[k])){g.round++;g.answered={};if(g.round===questions.length){const result='Placar final:\n'+score();delete db[name];return out(result,true);}return out('Rodada concluída.\n'+card(questions[g.round]),true);}return out('Resposta registrada. '+(correct?'Correta!':'Incorreta.'),true);}
+    if(m){if(!g.ids.includes(id)||Object.hasOwn(g.answered,id))return out('Inscrição necessária; uma resposta por rodada.');const correct=Number(m[1])-1===questions[g.round][2];g.answered[id]=true;if(correct){g.scores[id]++;g.marks[id].push(g.round);award(state,id,name);if(isBingo&&g.marks[id].length===3){const result='Bingo educativo concluído por '+label(id)+'!\n'+score();delete db[name];return out(result,true);}}if(g.ids.every(k=>g.answered[k])){g.round++;g.answered={};if(g.round===questions.length){const result='Placar final:\n'+score();delete db[name];return out(result,true);}return out('Rodada concluída.\n'+card(questions[g.round]),true);}return out('Resposta registrada. O resultado aparece no placar ao fim da rodada.',true);}
     if(arg==='proxima'&&g.ids[0]===id){g.round++;g.answered={};if(g.round===questions.length){const result=score();delete db[name];return out('Placar final:\n'+result,true);}return out(card(questions[g.round]),true);}
     return out(card(questions[g.round])+'\n:'+name+' resposta 1 | placar');
 }
