@@ -38,6 +38,7 @@ export async function startHeadlessBot(restartCount = 0) {
         logger: quiet,
         syncFullHistory: false,
         markOnlineOnConnect: false,
+        defaultQueryTimeoutMs: 15000,
         getMessage: async () => undefined,
     });
     let pending = false;
@@ -47,18 +48,19 @@ export async function startHeadlessBot(restartCount = 0) {
     let commandQueue = Promise.resolve();
     let scheduleTimer=null;
     let scheduleMinute='';
+    let scheduleWork=null;
     const scheduleTick=()=>{
         const stamp=new Date().toISOString().slice(0,16);
-        if(closed||stamp===scheduleMinute)return;
+        if(closed||scheduleWork||stamp===scheduleMinute)return;
         scheduleMinute=stamp;
-        commandQueue=commandQueue.then(async()=>{
+        scheduleWork=(async()=>{
             for(const jid of chats.list()){
                 if(closed||!chats.has(jid))continue;
                 try{const action=await features.schedule({jid,now:Date.parse(stamp+':00Z')});
                     if(action&&!closed&&chats.has(jid))await sock.groupSettingUpdate(jid,action);
                 }catch{console.error('Iris: scheduled group update failed');}
             }
-        }).catch(()=>console.error('Iris: schedule tick failed'));
+        })().catch(()=>console.error('Iris: schedule tick failed')).finally(()=>{scheduleWork=null;});
     };
     sock.ev.on('creds.update', () => auth.saveCreds().catch(() => { process.exit(1); }));
     sock.ev.on('connection.update', async update => {
@@ -82,6 +84,7 @@ export async function startHeadlessBot(restartCount = 0) {
             if(delay!==null){
                 try{
                     await commandQueue;
+                    if(scheduleWork)await scheduleWork;
                     await mediaQueue.idle();
                     await auth.saveCreds();
                     console.log('Iris: bounded reconnect scheduled');
@@ -121,10 +124,40 @@ export async function startHeadlessBot(restartCount = 0) {
         }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
     }
     const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg)});
+    const fresh=msg=>{
+        const ts=Number(msg.messageTimestamp||0);
+        return Number.isFinite(ts)&&Math.abs(Date.now()/1000-ts)<=120;
+    };
+    const remember=(jid,id)=>{
+        const key=jid+':'+id;
+        if(seen.has(key))return false;
+        seen.add(key);if(seen.size>500)seen.delete(seen.values().next().value);
+        return true;
+    };
+    const getActor=msg=>msg.key?.fromMe===true?(sock.user?.id||'owner').split(':')[0]+'@self':msg.key?.participant;
+    let pingPending=0;
+    let nextPingLog=0;
     sock.ev.on('messages.upsert', ({ messages, type }) => {
         if (closed || type !== 'notify') return;
+        const normal=[];
+        for(const msg of messages||[]){
+            const jid=msg.key?.remoteJid,id=msg.key?.id;
+            const plain=msg.message?.conversation||msg.message?.extendedTextMessage?.text||'';
+            if(!jid?.endsWith('@g.us')||String(plain).trim().toLowerCase()!==':ping'){normal.push(msg);continue;}
+            if(!id||!fresh(msg)||!remember(jid,id))continue;
+            const enabled=chats.has(jid),actor=getActor(msg);
+            const log=Date.now()>=nextPingLog;
+            if(log){nextPingLog=Date.now()+15000;console.log('Iris: ping received; group authorized='+enabled);}
+            if(!enabled||!actor||!allowCommand(jid,actor)||pingPending>=3)continue;
+            pingPending++;
+            Promise.resolve().then(()=>deliver(jid,'🌸 Íris — online!',msg))
+                .then(()=>{if(log)console.log('Iris: ping delivery completed');})
+                .catch(()=>console.error('Iris: ping delivery failed'))
+                .finally(()=>{pingPending--;});
+        }
+        if(!normal.length)return;
         commandQueue = commandQueue.then(async () => {
-            for (const msg of messages || []) {
+            for (const msg of normal) {
                 if (closed) return;
                 const jid = msg.key?.remoteJid;
                 const id = msg.key?.id;
