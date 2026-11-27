@@ -73,12 +73,13 @@ export async function infinityFeature({name,arg='',state,id,owner=false,now=Date
  const p=state.players[id];if(!p)return out('Use :perfil para participar voluntariamente.');const x=profile(p);
  if(name==='viajarworld'){const n=/^(?:[1-9]|1[0-8])$/.test(arg)?Number(arg):0;if(!n)return out('📍 Local atual: '+allRegions[position(p)-1].title+'\n:viajarworld 1–18 • :mapainfinity');if(hasActiveEncounter(p,now))return out('Finalize o desafio ou use :aventuraworld agir fugir.');const result=travel(p,n);return out(result.changed?'🧭 Viagem concluída: '+result.path.map(k=>allRegions[k-1].title).join(' → '):'Você já está em '+allRegions[n-1].title+'.',result.changed);}
  if(infinityGames.includes(name)){
+  if(arg==='m')arg='mesa';if(/^[123]$/.test(arg))arg='jogar '+arg;
   let g=d.games[name];
   if(arg==='novo'){if(g)return out('Já há uma partida.');d.games[name]={ids:[id],pos:[0],points:[0],turn:0,started:false,expires:now+day,owned:{},stage:0};return out('Partida criada! :'+name+' entrar | iniciar | sair. De 2 a 4 participantes, sem apostas, com pontos separados da economia.',true);}
   if(!g)return out('Use :'+name+' novo.');
   if(arg==='entrar'){if(g.started||g.ids.includes(id)||g.ids.length>=4)return out('Inscrição indisponível.');g.ids.push(id);g.pos.push(0);g.points.push(0);return out('Inscritos: '+g.ids.length+'/4.',true);}
   if(arg==='sair'){if(!g.ids.includes(id)&&!owner)return out('Somente participantes ou responsável encerram.');delete d.games[name];return out('Partida encerrada.',true);}
-  if(arg==='iniciar'){if(g.ids[0]!==id||g.ids.length<2||g.started)return out('Criador inicia com 2–4 participantes.');g.started=true;return out('Começou! :'+name+' jogar 1|2|3'+(name==='imobiliario'?' (escolha quantas casas avançar)':'')+'. '+label(g.ids[g.turn])+(['expedicao','reliquia'].includes(name)?'\n'+scenes(name,g):''),true);}
+  if(arg==='iniciar'){if(g.ids[0]!==id||g.ids.length<2||g.started)return out('Criador inicia com 2–4 participantes.');g.started=true;return out('Começou! :'+name+' jogar 1|2|3'+(name==='imobiliario'?' (escolha quantas casas avançar)':'')+'. '+label(g.ids[g.turn])+'\n'+gameLabel(g)+(['expedicao','reliquia'].includes(name)?'\n'+scenes(name,g):''),true);}
   if(!g.started||!arg||arg==='mesa')return out(gameLabel(g)+'\nVez: '+label(g.ids[g.turn])+' • :'+name+' jogar 1|2|3'+(['expedicao','reliquia'].includes(name)?'\n'+scenes(name,g):''));
   if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
   const m=/^jogar ([123])$/.exec(arg);if(!m)return out('Use :'+name+' jogar 1|2|3.');
