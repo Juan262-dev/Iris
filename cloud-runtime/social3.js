@@ -18,7 +18,7 @@ function find(state,code){const ids=Object.keys(state.players).filter(k=>k.start
 export async function socialFeature({name,arg='',state,id,now=Date.now()}){
     if(!social3.includes(name))return null;
     const x=state.social3??={},p=state.players[id];
-    if(name==='ajuda')return out(help[arg]||'🌸 Ajuda Íris 3.0\n:ajuda uno | damas | memoria | stop | midia | economia | privacidade\n:menu para todas as categorias.');
+    if(name==='ajuda')return out((Object.hasOwn(help,arg)?help[arg]:null)||'🌸 Ajuda Íris 3.0\n:ajuda uno | damas | memoria | stop | midia | economia | privacidade\n:menu para todas as categorias.');
     if(name==='apelido'){
         x.names??={};
         if(arg==='apagar'){delete x.names[id];return out('Apelido removido.',true);}
