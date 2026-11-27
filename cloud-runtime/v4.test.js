@@ -28,6 +28,21 @@ await g('domino','pv',a,{route:'100001@s.whatsapp.net'});await g('domino','pv',b
 const domino=await g('domino','iniciar');assert.equal(domino.text.unoDelivery.private.length,2);
 assert.equal(state.games4.domino.hands[a].length,7);assert.equal((await g('domino','mao',c)).changed,false);
 assert.equal((await g('domino','sair',b)).changed,true);
+await g('domino','novo');await g('domino','entrar',b);await g('domino','pv',a,{route:'100001@s.whatsapp.net'});await g('domino','pv',b,{route:'100002@lid'});await g('domino','iniciar');
+const dg=state.games4.domino;dg.hands[a]=[[2,5],[3,4],[0,1]];dg.hands[b]=[[1,6],[2,4]];dg.chain=[[2,3]];dg.deck=[[5,6]];dg.slots={[a]:{'2-5':1,'3-4':2,'0-1':3},[b]:{'1-6':1,'2-4':2}};dg.turn=0;
+assert.match((await g('domino','mao',a)).text.unoDelivery.private[0].content.text,/1\. \[2│5\]/);
+assert.equal((await g('domino','2',b)).changed,false);
+assert.equal((await g('domino','3',a)).changed,false);
+const dm=await g('domino','1',a);assert.equal(dm.changed,true);assert.deepEqual(dg.chain,[[5,2],[2,3]]);assert.equal(dm.text.unoDelivery.private.length,2);assert.match(dm.text.unoDelivery.private[0].content.text,/2\. \[3│4\]/);
+assert.equal((await g('domino','p',b)).changed,false);
+assert.equal((await g('domino','c',b)).changed,true);assert.equal(dg.slots[b]['5-6'],3);
+assert.equal((await g('domino','3 e',b)).changed,true);assert.deepEqual(dg.chain[0],[6,5]);
+dg.hands[a]=[[3,6],[0,1]];dg.slots[a]['3-6']=4;
+assert.match((await g('domino','4',a)).text,/dois lados/);
+assert.equal((await g('domino','4 d',a)).changed,true);assert.deepEqual(dg.chain.at(-1),[3,6]);
+assert.equal((await g('domino','sair',a)).changed,true);
+console.log('Iris: Domino stable piece numbers, auto-side, short commands and private turn notifications tests passed');
+
 await g('cruzadas','novo');for(const [i,w] of [[1,'sol'],[2,'sal'],[3,'lua']])assert.equal((await g('cruzadas','resposta '+i+' '+w)).changed,true);
 assert.equal(state.games4.cruzadas,undefined);
 await g('tesouro','novo');for(const w of ['biblioteca','sol','relogio'])assert.equal((await g('tesouro','resposta '+w)).changed,true);
