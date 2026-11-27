@@ -33,7 +33,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
     const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5]);
     let openedAt=0;
-    const pairingNumber = process.env.IRIS_PAIRING_PHONE || '';
+    const pairingNumber = lifecycle.localPrivate ? (lifecycle.pairingNumber || '') : (process.env.IRIS_PAIRING_PHONE || '');
     const auth = await useCloudAuthState('0', baileys);
     console.log('Iris: stored device registration: ' + (auth.state.creds.registered === true ? 'registered' : 'not_registered'));
     if (process.env.IRIS_DIAGNOSTIC_ONLY === 'true') return;
@@ -126,9 +126,10 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             try {
                 const code = await sock.requestPairingCode(pairingNumber);
                 // Never emit a local private pairing code to logs or the shared Manager.
-                if(lifecycle.localPrivate)lifecycle.onPairingCode?.(code);
+                if(lifecycle.localPrivate){lifecycle.pairingNumber='';if(!closed&&!lifecycle.stopping)lifecycle.onPairingCode?.(code);}
                 else console.log('Iris: private device pairing code: '+code);
             } catch {
+                if(lifecycle.localPrivate){lifecycle.pairingNumber='';lifecycle.onPairingError?.();}
                 console.error('Iris: pairing request failed; check the official linked-device screen.');
             }
         }
