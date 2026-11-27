@@ -12,10 +12,11 @@ import { studioNames } from './studio.js';
 import { game3,games3 } from './games3.js';
 import { socialFeature,social3,removeSocial } from './social3.js';
 import { media3Names } from './media3.js';
+import { profileCommands,profileFeature,captureName,displayName,recordGame } from './profileCard.js';
 import { originalMedia,originalGames,originalAdmin,puzzle,makeOriginalAdmin } from './originalCompat.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin]);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands]);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin]);
 export function parseExtra(text, owner) {
     text=String(text||'').trim();
@@ -44,7 +45,7 @@ export function menu(category='') {
         midia:'🖼️ *MÍDIA*\n:s — legenda de imagem ou GIF enviado como documento (até 2 MB para GIF)\n:texto frase — figurinha de texto\n:s — vídeo MP4 (primeiros 10 s, até 10 MB, sem áudio)\n:slonga — primeiros 20 s do MP4, até 15 MB (experimental)\n:som — MP4 com áudio (primeiros 10 s)\n:som 20 — primeiros 20 s com áudio (experimental)\nEnvie com legenda ou responda à mídia autorizada.\n:meme topo | rodapé — legenda de foto\n:imagem — responda a figurinha\n:audio | voz — responda a vídeo ou áudio\n:filtro cinza | sepia | nitido | invertido\n:semfundo | transparente #ffffff — fundo uniforme\n:autor nome — metadados da figurinha\n:trecho 30 — até 20 s a partir de 30 s\n:gif | comprimir — MP4\n:borda #ffffff | :pdf | :montagem — imagem\n:textanim frase — texto animado\n:renomear pacote | autor — figurinha\n:tts frase — voz sintetizada local\n:play piano | :youtube astronomia — pesquisa por tema\n:nasa lua | :pesquisarimagem girassol',
         jogos:'🎮 *JOGOS*\n:velha | forca | quiz\n:resposta 1, 2 ou 3\n:numero — adivinhe o número\n:ppt pedra — pedra, papel ou tesoura\n:dado | moeda\n:xadrez novo medio — jogar contra o bot\n:xadrez desafio | aceitar — multiplayer\nDurante a partida: envie e2e4, e2 e4, Cf3 ou cavalo f3\n:xadrez ajuda — regras, temas e ranking\n:velhadupla desafio | aceitar — multiplayer (casa 1 a 9)\n:aventura novo — missão de exploração\n:quiz ciencia | geografia | geral\n:uno novo | entrar | pv | iniciar | mao — cartas no privado\n:naval desafio | aceitar — tiro a1\n:rpg classe explorador | mapa | explorar\n:campeonato entrar | ver\n:uno ranking | stats | gritar\n:damas desafio | aceitar — dama b3 a4\n:memoria novo | entrar — par 2 7\n:stop novo | entrar | resposta\n:detetive novo | entrar\n:coop novo | entrar | ajudar\n:encoded novo | :inverse novo — palavras',
         diversao:'💬 *DIVERSÃO*\n:chat oi — diálogo local\n:piada | curiosidade\n:apelido nome | apagar\n:aniversario DD/MM | hoje | apagar',
-        economia:'🏆 *ECONOMIA VIRTUAL*\n:perfil | saldo | diario | ranking\n:loja | comprar item | inventario\n:nivel | conquistas | sair\n:missoes | resgatar nome\n:banco | depositar 10 | sacar 10\n:transferir codigo 10\n:semanal | profissao | trabalhar | tarefadiaria\n:empresa | propriedade | evento participar\n:mercado | anunciar item preco | adquirir codigo\n:vitrine | mochila | perfilvisual\n:evoluir empresa | propriedade\n:equipe criar nome | entrar nome | sair\n:troca propor codigo item item | aceitar codigo\n:eventoespecial participar',
+        economia:'🏆 *ECONOMIA VIRTUAL*\n:perfil | saldo | diario | ranking\n:loja | comprar item | inventario\n:nivel | conquistas | sair\n:missoes | resgatar nome\n:banco | depositar 10 | sacar 10\n:transferir codigo 10\n:semanal | profissao | trabalhar | tarefadiaria\n:empresa | propriedade | evento participar\n:mercado | anunciar item preco | adquirir codigo\n:vitrine | mochila | perfilvisual\n:nomeperfil nome | whatsapp\n:perfilfoto | :perfilbanner — envie imagem com legenda\n:perfiltema | :perfilmoldura | :perfiltitulo\n:perfilpublico on | off\n:perfilstats | :perfilvisual codigo\n:evoluir empresa | propriedade\n:equipe criar nome | entrar nome | sair\n:troca propor codigo item item | aceitar codigo\n:eventoespecial participar',
         admin:'🛡️ *RESPONSÁVEL*\n:on | off | abrir | fechar\n:definirregras texto\n:criar nome texto | remover nome\n:comandos | usar nome\n:boasvindas on | off\n:mensagembemvindo texto\n:avisogrupo texto\n:enquete pergunta | opção 1 | opção 2\n:votar 1 | votos | encerrarenquete\n:agenda 08:00 22:00 | off\n:advertir codigo motivo | advertencias codigo\n:prefixo\n:backup | sugestoes\n:kick @participante | :promote @participante | :demote @participante\nConfirme a operação com o mesmo comando seguido de confirmar.\nTodos: :sugestao texto'
     };
     const key=category.trim().toLowerCase();
@@ -74,7 +75,7 @@ export function makeFeatures() {
         await request(s, 'POST', { session_id:s.sessionId, item_type:'auth', item_id:'snapshot',
             encrypted_payload:seal(state,s), updated_at:new Date().toISOString() });
     }
-    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert, studio, unoRoute, advancedMedia, original }) {
+    async function handle({ command, jid, actor, sock, msg, owner, sticker, textSticker, meme, convert, studio, unoRoute, advancedMedia, original, rawName, loadProfileAsset }) {
         const { name, arg } = command;
         if (name === 'menu') return menu(arg);
         if (name === 'ping') return '🌸 Íris — online!';
@@ -84,8 +85,12 @@ export function makeFeatures() {
         if (name === 'chat') return localReply(arg);
         if (name === 'xadrez') return chess({jid,actor,arg});
         if (name === 'ia') return '🌸 IA externa desativada. Use :chat para diálogos locais.';
-        if (['piada','curiosidade','ppt','numero'].includes(name)) return extras({name,arg,jid,actor});
-        if (name === 'velha' || name === 'forca') return localGames({name,arg,jid,actor});
+        if (['piada','curiosidade','ppt','numero','velha','forca'].includes(name)) {
+            const text=['velha','forca'].includes(name)?localGames({name,arg,jid,actor}):extras({name,arg,jid,actor});
+            const result=typeof text==='string'&&(['ppt','numero','velha','forca'].includes(name))?(/(?:Você venceu!$|Você acertou)/.test(text)?'w':/(?:Íris venceu!$|^Fim de jogo\.)/.test(text)?'l':/Empate!$/.test(text)?'d':null):null;
+            if(result&&actor){const {s,state}=await readGroup(jid);const id=hash(s.key,jid+':'+actor);if(recordGame(state,name,id,result))await save(s,state);}
+            return text;
+        }
         if (name === 'loja') return '🛍️ Loja virtual — sem dinheiro real.\n' + Object.entries(shop).map(([k,v])=>v.name+' — '+v.price+' moedas | :comprar '+k).join('\n');
         if (name === 'dado') return '🎲 Resultado: ' + randomInt(1,7);
         if (name === 'moeda') return '🪙 ' + (randomInt(2) ? 'Cara' : 'Coroa') + ' — sem apostas.';
@@ -122,6 +127,9 @@ export function makeFeatures() {
         const {s,state} = await readGroup(jid);
         const id = hash(s.key, jid + ':' + actor);
         const player = state.players[id];
+        if(profileCommands.includes(name)||name==='perfil'&&arg){
+            const out=await profileFeature({name:name==='perfil'?'perfilvisual':name,arg,state,id,rawName,loadAsset:loadProfileAsset});if(out?.changed)await save(s,state);return out?.text??null;
+        }
         if(originalGames.includes(name)){
             const out=puzzle({name,arg,state,id});if(out?.changed)await save(s,state);return out?.text??null;
         }
@@ -166,11 +174,11 @@ export function makeFeatures() {
         if (name === 'nivel') return player ? '⭐ Nível '+(1+Math.floor(player.xp/10))+' | '+player.xp+' XP.' : 'Use :perfil.';
         if (name === 'conquistas') return player ? '🏅 Conquistas: '+['Primeiro perfil',...(player.xp>=10?['10 XP']:[]),...(player.xp>=50?['50 XP']:[]),...(Object.keys(player.inventory||{}).length?['Colecionador']:[])].join(', ') : 'Use :perfil.';
         if (name === 'perfil') {
-            if (player) return '🌸 Perfil já ativo: Jogador ' + id.slice(0,6) + '.';
+            if (player) {if(captureName(state,id,rawName))await save(s,state);return '🌸 Perfil já ativo: '+displayName(state,id)+' | Código '+id.slice(0,6)+'. Use :perfilvisual.';}
             if (Object.keys(state.players).length >= 200) return '🌸 Limite de perfis deste grupo atingido.';
             state.players[id] = { coins:0, xp:0, daily:'' };
-            await save(s,state);
-            return '🌸 Perfil virtual criado: Jogador ' + id.slice(0,6) + '. Somente pontos de jogo são guardados. Use :sair para apagar.';
+            captureName(state,id,rawName);await save(s,state);
+            return '🌸 Perfil virtual criado: '+displayName(state,id)+' | Código '+id.slice(0,6)+'. Nome de exibição e dados do jogo são guardados neste grupo. :nomeperfil para editar; :perfilvisual para ver; :sair para apagar.';
         }
         if (name === 'sair') {
             if (player) { delete state.players[id]; removeMegaProfile(state,id); removeSocial(state,id); if(state.megaGames?.unoStats)delete state.megaGames.unoStats[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
@@ -186,7 +194,7 @@ export function makeFeatures() {
         }
         if (name === 'ranking') {
             const top = Object.entries(state.players).sort((a,b)=>b[1].xp-a[1].xp).slice(0,10);
-            return '🏆 *Ranking virtual*\n' + (top.map(([k,p],i)=>(i+1)+'. Jogador '+k.slice(0,6)+' — '+p.xp+' XP').join('\n') || 'Nenhum perfil inscrito.');
+            return '🏆 *Ranking virtual*\n' + (top.map(([k,p],i)=>(i+1)+'. '+(p.card?.public===true?displayName(state,k):'Jogador '+k.slice(0,6))+' ('+k.slice(0,6)+') — '+p.xp+' XP').join('\n') || 'Nenhum perfil inscrito.');
         }
         if (name === 'resposta') {
             const q = quizzes.get(jid);
@@ -194,7 +202,7 @@ export function makeFeatures() {
             if (!/^[123]$/.test(arg)) return '🌸 Use :resposta 1, 2 ou 3.';
             if (Number(arg) !== q.answer) return '🌸 Não é essa. Tente outra opção!';
             quizzes.delete(jid);
-            if (player) {player.coins += 5; player.xp += 3; await save(s,state);}
+            if (player) {player.coins += 5; player.xp += 3; recordGame(state,'quiz',id,'w');await save(s,state);}
             return '🌸 Resposta correta!' + (player?' +5 moedas virtuais e +3 XP.':' Use :perfil para pontuar.');
         }
         if (name === 'comandos') return '🌸 Personalizados: ' + (Object.keys(state.custom).join(', ') || 'nenhum.');
