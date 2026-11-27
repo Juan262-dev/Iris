@@ -22,8 +22,7 @@ const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 export const winner = b => wins.some(a=>a.every(i=>b[i]==='X'))?'X':wins.some(a=>a.every(i=>b[i]==='O'))?'O':null;
 const boardText = b => [0,3,6].map(start=>b.slice(start,start+3).map((v,i)=>v==='X'?'❌':v==='O'?'⭕':String(start+i+1)).join(' │ ')).join('\n');
 const words = ['PLANETA','ESCOLA','CADERNO','FLORESTA','OCEANO','JANELA','FUTEBOL','AMIZADE','MUSICA'];
-export function makeLocalGames() {
-    const games = new Map();
+export function makeLocalGames(games = new Map()) {
     const get = (key) => {const g=games.get(key);if(g && g.expires>Date.now())return g;games.delete(key);return null;};
     const put = (key,g) => {games.set(key,{...g,expires:Date.now()+600000});if(games.size>200)games.delete(games.keys().next().value);};
     return ({name,arg,jid,actor})=>{
