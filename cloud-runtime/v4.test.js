@@ -16,7 +16,7 @@ assert.equal(parseExtra('!2048 novo',true),null);assert.ok(menu('jogos').include
 assert.deepEqual(slide2048([2,2,2,2,...Array(12).fill(0)],'esquerda').board.slice(0,4),[4,4,0,0]);
 assert.equal(slide2048([2,2,4,4,...Array(12).fill(0)],'direita').score,12);
 const g=(name,arg='',id=a,extra={})=>game4({name,arg,id,state,now,choose:pick,...extra});
-assert.equal((await g('2048','novo')).changed,true);assert.equal((await sharp((await g('2048','mesa')).text.image).metadata()).width,460);
+assert.equal((await g('2048','novo')).changed,true);assert.equal((await sharp((await g('2048','m')).text.image).metadata()).width,720);
 const solo=await g('unobot','novo',a,{route:'100001@s.whatsapp.net'});
 assert.equal(solo.text.unoDelivery.private.length,1);assert.equal(solo.text.unoDelivery.private[0].to,'100001@s.whatsapp.net');
 assert.equal(state.games4.unobot[a].hands[a].length,7);
@@ -43,7 +43,7 @@ assert.equal((await g('domino','4 d',a)).changed,true);assert.deepEqual(dg.chain
 assert.equal((await g('domino','sair',a)).changed,true);
 console.log('Iris: Domino stable piece numbers, auto-side, short commands and private turn notifications tests passed');
 
-await g('cruzadas','novo');for(const [i,w] of [[1,'sol'],[2,'sal'],[3,'lua']])assert.equal((await g('cruzadas','resposta '+i+' '+w)).changed,true);
+await g('cruzadas','novo');for(const [i,w] of [[1,'sol'],[2,'sal'],[3,'lua']])assert.equal((await g('cruzadas',i+' '+w)).changed,true);
 assert.equal(state.games4.cruzadas,undefined);
 await g('tesouro','novo');for(const w of ['biblioteca','sol','relogio'])assert.equal((await g('tesouro','resposta '+w)).changed,true);
 for(const name of ['quizmulti','batalhaconhecimento','bingoeducativo']){
