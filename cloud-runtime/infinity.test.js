@@ -6,7 +6,7 @@ import { commands,normalizeConfig } from './managerV2.js';
 const a='a'.repeat(64),b='b'.repeat(64),c='c'.repeat(64),day=86400000,now=Date.UTC(2026,10,27);
 const state={players:{[a]:{xp:0,coins:5},[b]:{xp:0,coins:7}},custom:{legacy:'old'},rules:'preserved'};
 const run=(name,arg,id=a,extra={})=>infinityFeature({name,arg,state,id,now,choose:()=>0,...extra});
-for(const name of infinityCommands){assert.equal(parseExtra(':'+name,true)?.name,name);}
+for(const name of infinityCommands){const retired=['mapainfinity','viajarworld','aventuraworld','offline','explorar','construir','oficina','npc'].includes(name);assert.equal(parseExtra(':'+name,true)?.name,retired?'jogos':name);}
 assert.equal(parseExtra(':pign',false)?.name,'ping');assert.equal(parseExtra(':fechr',true),null);assert.equal(parseExtra(':backupinfinity salvar',false),null);assert.ok(menu('infinity').includes(':simulado'));
 assert.equal((await run('explorar','1',c)).changed,false);
 assert.equal((await run('explorar','1')).changed,true);assert.equal((await run('explorar','1')).changed,false);
@@ -32,7 +32,7 @@ assert.equal((await run('simulado','responder 1',b)).changed,false);
 for(let i=0;i<4;i++)await run('simulado','responder 1');
 assert.equal(state.players[a].infinity.study,undefined);assert.equal(state.players[a].infinity.studyDone,4);
 assert.match((await run('flashcard','ciencia revelar')).text,/—/);
-await run('explorar','2');await run('explorar','3');assert.equal((await run('missaoinfinity','concluir')).changed,true);assert.equal((await run('missaoinfinity','concluir')).changed,false);
+await run('explorar','2');await run('explorar','3');state.players[a].infinity.studyDay=new Date(now).toISOString().slice(0,10);assert.equal((await run('missaoinfinity','concluir')).changed,true);assert.equal((await run('missaoinfinity','concluir')).changed,false);
 await run('trilha','novo');pruneInfinity(state,now+2*day);assert.equal(state.infinity.games.trilha,undefined);
 removeInfinity(state,b);assert.equal(state.infinity.guilds.estrelas.ids.includes(b),false);assert.equal(state.infinity.festival[b],undefined);assert.equal(state.custom.legacy,'old');assert.equal(state.rules,'preserved');
 const card=await artCard('Ciência & arte');assert.equal((await sharp(card.image).metadata()).width,600);
