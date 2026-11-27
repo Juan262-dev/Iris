@@ -4,6 +4,7 @@ import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
 import { infinityMedia } from './infinity.js';
+import sharp from 'sharp';
 import { makeTextSticker } from './sticker.js';
 import { stickerCommand, sendSoundSticker } from './stickerCommands.js';
 import { makeMeme } from './advancedMedia.js';
@@ -26,6 +27,8 @@ import { setRuntime,makeJobQueue,reconnectDelay,incrementRuntime } from './runti
 
 export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:false }) {
     if (lifecycle.stopping || process.env.IRIS_BOT_ENABLED !== 'true') return;
+    // Bound libvips cache and parallelism for small hosted instances.
+    sharp.cache({memory:24,files:0,items:40});sharp.concurrency(2);
     const makeSocket = baileys.makeWASocket || baileys.default;
     if (typeof makeSocket !== 'function') throw new Error('Baileys socket export unavailable');
     const chats = await loadChatSettings();
