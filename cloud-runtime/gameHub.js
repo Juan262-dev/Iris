@@ -4,7 +4,7 @@ const catalog={
  stop:['Adedonha','grupo','novo classico 3 180','entrar → iniciar → pv → responda ao formulário; placar, revisar, proxima'],
  uno:['UNO','grupo','novo','entrar → pv → iniciar; mao, comprar, gritar'],
  unobot:['UNO solo','solo','novo','mao, pos 1, comprar, sair'],
- domino:['Dominó','grupo','novo','entrar → pv → iniciar; jogar 1-2 esquerda, comprar, mao'],
+ domino:['Dominó','grupo','novo','entrar → pv → iniciar; 2 (peça), 2 e/d (lado), c (comprar), p (passar), m (mesa), mao'],
  xadrez:['Xadrez','ambos','novo medio','desafio → aceitar; e2e4, tabuleiro, ajuda'],
  damas:['Damas','grupo','desafio','aceitar; b3 a4, mesa'],
  naval:['Batalha naval','grupo','desafio','aceitar; tabuleiro, tiro a1'],
