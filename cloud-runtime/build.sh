@@ -29,6 +29,10 @@ node --check cloud-runtime/megaGames.js
 node --check cloud-runtime/megaCommunity.js
 node --check cloud-runtime/studio.js
 node cloud-runtime/mega.test.js
+node --check cloud-runtime/games3.js
+node --check cloud-runtime/social3.js
+node --check cloud-runtime/media3.js
+node cloud-runtime/v3.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
