@@ -24,10 +24,10 @@ export async function megaFeature({name,arg='',state,id,owner=false,now=Date.now
     if(adminOnly.has(name)&&!owner)return out(null);
     const m=state.mega??={};
     const p=state.players[id];
-    if(name==='versao')return out('🌸 Íris Cloud 2.0 — mega atualização. Runtime adaptado; IA externa desativada.');
+    if(name==='versao')return out('🌸 Íris Cloud 3.0 — nova geração. Runtime adaptado; IA externa desativada.');
     if(name==='menuimagem'){
         const items=[['Jogos multiplayer',':menu jogos'],['Estúdio de mídia',':menu midia'],['Economia virtual',':menu economia'],['Administração',':menu admin'],['Interação',':menu diversao']];
-        return out({image:await collectionImage(items,'ÍRIS CLOUD 2.0'),caption:'🌸 Central de comandos. :menu para a lista completa.'});
+        return out({image:await collectionImage(items,'ÍRIS CLOUD 3.0'),caption:'🌸 Central de comandos. :menu para a lista completa.'});
     }
     if(name==='prefixo')return out('Prefixo exclusivo da Íris: : (exemplo :menu). Prefixos antigos desativados para evitar conflitos.');
     if(name==='backup'){
@@ -73,7 +73,7 @@ export async function megaFeature({name,arg='',state,id,owner=false,now=Date.now
         if(arg==='receber'&&name==='empresa'){
             if(!Object.hasOwn(store,p.company||''))return out('Crie uma empresa virtual primeiro.');
             if(p.companyDay===date(now))return out('Receita diária já coletada.');
-            p.companyDay=date(now);p.coins=Math.min(1000000,p.coins+10);return out('Empresa virtual: +10 moedas.',true);
+            p.companyDay=date(now);p.coins=Math.min(1000000,p.coins+10+3*((p.companyLevel||1)-1));return out('Empresa virtual: +'+(10+3*((p.companyLevel||1)-1))+' moedas.',true);
         }
         if(!Object.hasOwn(store,arg)||p[key])return out('Escolha uma opção válida. Apenas uma '+name+' por perfil.');
         if(p.coins<store[arg])return out('Saldo insuficiente.');
