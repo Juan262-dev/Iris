@@ -20,16 +20,16 @@ export function makeChess({choose=randomInt,now=Date.now}={}) {
             g={game:new Chess(),expires:now()+30*60000};games.set(key,g);
             if(games.size>100)games.delete(games.keys().next().value);
         }
-        if(!g)return '♟️ Use !iris xadrez novo para iniciar.';
+        if(!g)return '♟️ Use :xadrez novo para iniciar.';
         const board=async (status)=>{
             const caption='♟️ *Xadrez — você joga com as brancas*\n'+status;
             try { return {image:await renderBoard(g.game,g.game.history({verbose:true}).at(-1)),caption}; }
             catch { console.error('Iris: chess board rendering failed'); return caption+'\n'+boardText(g.game); }
         };
-        if(!input||input==='novo'||input==='tabuleiro')return board('Use !iris xadrez e2e4 (promoção: e7e8q).');
-        if(!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(input))return '♟️ Informe origem e destino, por exemplo !iris xadrez e2e4.';
+        if(!input||input==='novo'||input==='tabuleiro')return board('Use :xadrez e2e4 (promoção: e7e8q).');
+        if(!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(input))return '♟️ Informe origem e destino, por exemplo :xadrez e2e4.';
         try{g.game.move({from:input.slice(0,2),to:input.slice(2,4),...(input.length===5?{promotion:input[4]}:{})});}
-        catch{return '♟️ Jogada inválida. Consulte !iris xadrez tabuleiro.';}
+        catch{return '♟️ Jogada inválida. Consulte :xadrez tabuleiro.';}
         const result=()=>{
             if(!g.game.isGameOver())return null;
             games.delete(key);
@@ -51,11 +51,11 @@ const missions=[
     {id:'colecao',label:'Ter um item no inventário',coins:10,ready:p=>Object.keys(p.inventory||{}).length>0},
 ];
 export function mission(player,arg='') {
-    if(!player)return {text:'🌸 Use !iris perfil para participar.',changed:false};
+    if(!player)return {text:'🌸 Use :perfil para participar.',changed:false};
     const claimed=player.missions||{};
     const selected=missions.find(m=>m.id===arg.toLowerCase().trim());
-    if(!arg.trim())return {text:'🎯 *Missões de conquista* (uma vez cada)\n'+missions.map(m=>(claimed[m.id]?'✅':m.ready(player)?'🎁':'◻️')+' '+m.label+' — '+m.coins+' moedas virtuais\n!iris resgatar '+m.id).join('\n'),changed:false};
-    if(!selected)return {text:'Missão desconhecida. Use !iris missoes.',changed:false};
+    if(!arg.trim())return {text:'🎯 *Missões de conquista* (uma vez cada)\n'+missions.map(m=>(claimed[m.id]?'✅':m.ready(player)?'🎁':'◻️')+' '+m.label+' — '+m.coins+' moedas virtuais\n:resgatar '+m.id).join('\n'),changed:false};
+    if(!selected)return {text:'Missão desconhecida. Use :missoes.',changed:false};
     if(claimed[selected.id])return {text:'Missão já resgatada.',changed:false};
     if(!selected.ready(player))return {text:'Missão ainda não concluída.',changed:false};
     player.missions??={};player.missions[selected.id]=true;player.coins+=selected.coins;
@@ -63,7 +63,7 @@ export function mission(player,arg='') {
 }
 export function welcomeMessage(action, count) {
     if(!Number.isInteger(count)||count<1)return null;
-    if(action==='add')return '🌸 Boas-vindas ao grupo! Conheça os comandos com !iris menu e as regras com !iris regras.';
+    if(action==='add')return '🌸 Boas-vindas ao grupo! Conheça os comandos com :menu e as regras com :regras.';
     if(action==='remove')return '🌸 Até mais a quem saiu do grupo!';
     return null;
 }
