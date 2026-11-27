@@ -49,7 +49,7 @@ export async function socialFeature({name,arg='',state,id,now=Date.now()}){
         if(!['empresa','propriedade'].includes(arg))return out('Use :evoluir empresa ou propriedade.');
         const asset=arg==='empresa'?'company':'property',levelKey=asset+'Level';
         if(!p[asset])return out('Adquira um '+arg+' primeiro.');
-        const level=p[levelKey]||1;if(level>=5)return out('Nível máximo.');
+        const level=p[levelKey]||1;if(level>=(asset==='company'?10:5))return out('Nível máximo.');
         const price=level*50;if(p.coins<price)return out('Custo: '+price+' moedas virtuais. Saldo insuficiente.');
         p.coins-=price;p[levelKey]=level+1;return out(arg+' nível '+p[levelKey]+'.',true);
     }
