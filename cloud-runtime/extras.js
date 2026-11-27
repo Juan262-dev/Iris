@@ -9,7 +9,7 @@ export function makeExtras() {
         if(name==='ppt'){
             const choices=['pedra','papel','tesoura'];
             const a=choices.indexOf(arg.toLowerCase());
-            if(a<0)return '✊ Use !iris ppt pedra, papel ou tesoura.';
+            if(a<0)return '✊ Use :ppt pedra, papel ou tesoura.';
             const b=randomInt(3);
             return 'Você: '+choices[a]+' | Íris: '+choices[b]+'\n'+(a===b?'Empate!':(a-b+3)%3===1?'Você venceu!':'Íris venceu!');
         }
@@ -19,11 +19,11 @@ export function makeExtras() {
             if(!arg||arg==='novo'){
                 games.set(key,{answer:randomInt(1,101),tries:0,expires:Date.now()+600000});
                 if(games.size>200)games.delete(games.keys().next().value);
-                return '🔢 Adivinhe um número de 1 a 100. Você tem 8 tentativas. Use !iris numero 50.';
+                return '🔢 Adivinhe um número de 1 a 100. Você tem 8 tentativas. Use :numero 50.';
             }
             if(arg==='sair'){games.delete(key);return 'Jogo encerrado.';}
             const g=games.get(key);
-            if(!g||g.expires<Date.now()){games.delete(key);return 'Use !iris numero para começar.';}
+            if(!g||g.expires<Date.now()){games.delete(key);return 'Use :numero para começar.';}
             if(!/^\d{1,3}$/.test(arg)||Number(arg)<1||Number(arg)>100)return 'Escolha um número de 1 a 100.';
             const n=Number(arg);g.tries++;
             if(n===g.answer||g.tries>=8){games.delete(key);return n===g.answer?'🎉 Você acertou em '+g.tries+' tentativas!':'Fim de jogo. O número era '+g.answer+'.';}
