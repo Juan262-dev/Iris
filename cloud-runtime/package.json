@@ -10,6 +10,7 @@
     "@whiskeysockets/baileys": "7.0.0-rc14",
     "sharp": "0.35.5",
     "chess.js": "1.4.0",
-    "text2wav": "0.0.14"
+    "text2wav": "0.0.14",
+    "qrcode": "1.5.4"
   }
 }
