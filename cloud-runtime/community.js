@@ -1,3 +1,4 @@
+import { recordGame } from './profileCard.js';
 import { randomInt } from 'node:crypto';
 import { winner } from './localFun.js';
 
@@ -40,7 +41,7 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
         if(!/^[1-9]$/.test(arg)||g.b[Number(arg)-1])return result('Escolha uma casa livre de 1 a 9.');
         g.b[Number(arg)-1]=g.x===id?'X':'O';
         const w=winner(g.b),board=grid(g.b);
-        if(w||g.b.every(Boolean)){delete x.velha;return result(board+'\n'+(w?label(id)+' venceu!':'Empate!'),true);}
+        if(w||g.b.every(Boolean)){for(const k of [g.x,g.o])recordGame(state,'velhadupla',k,w?(k===id?'w':'l'):'d');delete x.velha;return result(board+'\n'+(w?label(id)+' venceu!':'Empate!'),true);}
         g.turn=g.x===id?g.o:g.x;g.expires=now+86400000;
         return result(board+'\nVez de '+label(g.turn)+'. Envie casa 1 até casa 9.',true);
     }
@@ -117,7 +118,7 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
         }
         if(!arg)return result(scenes[p.adventure.scene][0]+'\n:aventura ajudar ou explorar');
         if(!['ajudar','explorar'].includes(arg))return result('Escolha ajudar, explorar ou sair.');
-        const action=scenes[p.adventure.scene][1];delete p.adventure;p.adventureDay=day(now);p.coins=Math.min(limit,p.coins+10);p.xp+=3;
+        recordGame(state,'aventura',id,'c');const action=scenes[p.adventure.scene][1];delete p.adventure;p.adventureDay=day(now);p.coins=Math.min(limit,p.coins+10);p.xp+=3;
         return result('🌟 '+action+' — missão concluída! +10 moedas e +3 XP.',true);
     }
     return null;
