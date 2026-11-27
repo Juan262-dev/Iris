@@ -1,3 +1,4 @@
+import { recordMatch5 } from './games5.js';
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
 import { unoPublic,unoPrivate,validUnoRoute } from './unoVisual.js';
@@ -67,7 +68,7 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         const legal=(c,k)=>c==='c'||c==='c4'&&!g.hands[k].some(v=>v[0]===g.color)||!c.startsWith('c')&&(c[0]===g.color||!g.discard.at(-1).startsWith('c')&&c.slice(1)===g.discard.at(-1).slice(1));
         const draw=(k,n)=>{for(let i=0;i<n;i++){const c=take();if(c)g.hands[k].push(c);}};
         const play=(k,c,color)=>{g.hands[k].splice(g.hands[k].indexOf(c),1);g.discard.push(c);g.color=c.startsWith('c')?color:c[0];const other=k===id?bot:id;if(c==='c4'||c[1]==='d')draw(other,c==='c4'?4:2);return c==='c4'||['d','s','r'].includes(c[1]);};
-        const done=async(k)=>{if(k===id)award(state,id,name,3);const p=state.players[id];if(p){p.matchHistory5??=[];p.matchHistory5.push({game:name,result:k===id?'vitória':'derrota',at:now});p.matchHistory5=p.matchHistory5.slice(-30);}const result=await unoPublic(g,k===id?'Você venceu a Íris!':'Íris venceu!');delete all[id];return out(result,true);};
+        const done=async(k)=>{if(k===id)award(state,id,name,3);recordMatch5(state,id,name,k===id?'vitória':'derrota',now);const result=await unoPublic(g,k===id?'Você venceu a Íris!':'Íris venceu!');delete all[id];return out(result,true);};
         let again=false;
         if(arg==='gritar')return out(g.hands[id].length===1?'UNO!':'Você precisa ter uma carta.');
         if(arg==='comprar')draw(id,1);
@@ -92,12 +93,12 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(!arg||arg==='mesa')return out(table());
         if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
         const hand=g.hands[id],left=g.chain[0][0],right=g.chain.at(-1)[1],legal=t=>t.includes(left)||t.includes(right);
-        if(arg==='comprar'){if(hand.some(legal))return out('Você possui uma peça jogável.');if(g.deck.length){hand.push(g.deck.pop());return out(await pack([id],table()),true);}g.turn=(g.turn+1)%g.ids.length;g.passes++;if(g.passes>=g.ids.length){const sums=g.ids.map(k=>g.hands[k].flat().reduce((a,b)=>a+b,0));const low=Math.min(...sums), winners=g.ids.filter((_,i)=>sums[i]===low),w=winners.length===1?winners[0]:null;if(w)award(state,w,name,3);delete db[name];return out(w?label(w)+' venceu por menor soma.':'Empate!',true);}return out(table(),true);}
+        if(arg==='comprar'){if(hand.some(legal))return out('Você possui uma peça jogável.');if(g.deck.length){hand.push(g.deck.pop());return out(await pack([id],table()),true);}g.turn=(g.turn+1)%g.ids.length;g.passes++;if(g.passes>=g.ids.length){const sums=g.ids.map(k=>g.hands[k].flat().reduce((a,b)=>a+b,0));const low=Math.min(...sums), winners=g.ids.filter((_,i)=>sums[i]===low),w=winners.length===1?winners[0]:null;if(w)award(state,w,name,3);for(const k of g.ids)recordMatch5(state,k,name,w?(k===w?'vitória':'derrota'):'empate',now);delete db[name];return out(w?label(w)+' venceu por menor soma.':'Empate!',true);}return out(table(),true);}
         const m=/^jogar ([0-6])-([0-6]) (esquerda|direita)$/.exec(arg);if(!m)return out('Use :domino jogar 1-2 esquerda ou direita.');
         const a=Number(m[1]),b=Number(m[2]),i=hand.findIndex(t=>t.includes(a)&&t.includes(b)&&(a!==b||t[0]===t[1])),end=m[3]==='esquerda'?left:right;
         if(i<0||![a,b].includes(end))return out('Peça não disponível ou incompatível.');
         const other=a===end?b:a;if(m[3]==='esquerda')g.chain.unshift([other,end]);else g.chain.push([end,other]);hand.splice(i,1);g.passes=0;
-        if(!hand.length){award(state,id,name,3);for(const k of g.ids){const p=state.players[k];if(p){p.matchHistory5??=[];p.matchHistory5.push({game:name,result:k===id?'vitória':'derrota',at:now});p.matchHistory5=p.matchHistory5.slice(-30);}}delete db[name];return out(label(id)+' venceu o dominó!',true);}
+        if(!hand.length){award(state,id,name,3);for(const k of g.ids)recordMatch5(state,k,name,k===id?'vitória':'derrota',now);delete db[name];return out(label(id)+' venceu o dominó!',true);}
         g.turn=(g.turn+1)%g.ids.length;g.expires=now+day;return out(await pack([id],table()),true);
     }
     if(name==='cruzadas'){
