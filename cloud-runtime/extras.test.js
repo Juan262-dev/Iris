@@ -20,5 +20,5 @@ assert.match(extras({...g,name:'ppt',arg:'pedra'}),/Você: pedra/);
 assert.match(menu('jogos'),/numero/);
 assert.doesNotMatch(menu('jogos'),/ECONOMIA VIRTUAL/);
 assert.match(menu(''),/Sem IA externa/);
-assert.equal(parseExtra('!iris ppt pedra',false).name,'ppt');
+assert.equal(parseExtra(':ppt pedra',false).name,'ppt');
 console.log('Iris: menu, mini games and anti-spam tests passed');
