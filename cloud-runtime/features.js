@@ -166,7 +166,7 @@ export function makeFeatures() {
         const player = state.players[id];
         if(games5.includes(name)||community5.includes(name)||name===collage5){
             const category=games5.includes(name)?'jogos':name===collage5?'midia':['gincana','festival','criatividade','historiainterativa','comemoracao'].includes(name)?'fun':community5.includes(name)&&['painel','comandopermissao','auditoria'].includes(name)?null:'economia';
-            const role=await adminRole(sock,jid,msg,owner);if(category&&!await categoryAllowed(state,category,role))return 'Recurso limitado pelo responsável.';
+            const role=owner?'responsavel':category&&groupConfig(state).roles?.[category]&&groupConfig(state).roles[category]!=='todos'?await adminRole(sock,jid,msg,owner):'membro';if(category&&!await categoryAllowed(state,category,role))return 'Recurso limitado pelo responsável.';
             if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;
             const result=games5.includes(name)?await game5({name,arg,state,id,owner}):name===collage5?await collageFeature5({state,id,arg,loadImage:loadPackImage}):name==='museu'&&arg.startsWith('doar ')?museumDonation({state,id,arg}):await communityFeature5({name,arg,state,id,owner,role,knownCommands:[...simple]});
             if(result?.changed)await save(s,state);return result?.text??null;
@@ -240,7 +240,7 @@ export function makeFeatures() {
             return '🌸 Perfil virtual criado: '+displayName(state,id)+' | Código '+id.slice(0,6)+'. Nome de exibição e dados do jogo são guardados neste grupo. :nomeperfil para editar; :perfilvisual para ver; :sair para apagar.';
         }
         if (name === 'sair') {
-            if (player) { delete state.players[id]; removeMegaProfile(state,id); removeSocial(state,id); removeFun(state,id); removeGames4(state,id); removeGames5(state,id); removeCommunity5(state,id); if(state.legacyGames5)for(const k of Object.keys(state.legacyGames5))if(k==='grupo:'+id||k.startsWith('grupo:'+id+':'))delete state.legacyGames5[k]; if(state.tournament4?.ids?.includes(id)){if(state.megaGames?.uno?.tournament4)delete state.megaGames.uno;delete state.tournament4;} if(state.megaGames?.unoStats)delete state.megaGames.unoStats[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
+            { delete state.players[id]; removeMegaProfile(state,id); removeSocial(state,id); removeFun(state,id); removeGames4(state,id); removeGames5(state,id); removeCommunity5(state,id); if(state.legacyGames5)for(const k of Object.keys(state.legacyGames5))if(k==='grupo:'+id||k.startsWith('grupo:'+id+':'))delete state.legacyGames5[k]; if(state.tournament4?.ids?.includes(id)){if(state.megaGames?.uno?.tournament4)delete state.megaGames.uno;delete state.tournament4;} if(state.megaGames?.unoStats)delete state.megaGames.unoStats[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
             return '🌸 Seu perfil virtual foi removido.';
         }
         if (name === 'saldo') return player ? '🌸 Saldo: ' + player.coins + ' moedas virtuais | XP: ' + player.xp : '🌸 Use :perfil para participar.';
@@ -322,15 +322,15 @@ export function makeFeatures() {
             const req=state.config5?.commands?.[name];
             const arg=input.command?.arg||input.arg||'';
             const exitAllowed=['sair','apagar','off'].includes(arg)&&(['uno','domino','unobot','ludo','sudoku','termo','xadrez','fun','perfilpublico','pacotefig','colagem','festival'].includes(name));
-            if(req&&!exitAllowed&&!commandPermitted(state,name,await adminRole(sock,jid,msg,owner)))return 'Comando restrito pelo responsável.';
+            if(req&&!exitAllowed&&!commandPermitted(state,name,await adminRole(sock,jid,msg,owner)))return input.shorthand?null:'Comando restrito pelo responsável.';
             const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));
             return context5.run({jid,data,token,before},fn);
         };
         return readOnly?perform():groupSerial(jid,perform);
     }
     const wrapped=input=>execute(input,input.command.name,()=>handle(input),readOnlyMedia.has(input.command.name));
-    wrapped.chessMove=input=>execute(input,'xadrez',()=>handle.chessMove(input));
-    wrapped.activity=input=>execute(input,input.command.name,()=>handle.activity(input));
+    wrapped.chessMove=input=>execute({...input,shorthand:true},'xadrez',()=>handle.chessMove(input));
+    wrapped.activity=input=>execute({...input,shorthand:true},input.command.name,()=>handle.activity(input));
     wrapped.schedule=handle.schedule;wrapped.welcome=handle.welcome;
     return wrapped;
 }
