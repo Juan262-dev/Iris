@@ -1,3 +1,4 @@
+import {stopGame} from './stopGame.js';
 import { recordGame } from './profileCard.js';
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
@@ -40,6 +41,7 @@ async function damasBoard(g,caption){
 }
 export async function game3({name,arg='',state,id,now=Date.now(),choose=randomInt,activeOnly=false}){
     if(!games3.includes(name))return null;
+    if(name==='stop')return stopGame({state,id,arg,now,choose,activeOnly});
     const db=state.games3??={};
     let g=db[name];if(g&&g.expires<=now){delete db[name];g=null;}
     if(activeOnly&&(!g||!g.ids.includes(id)))return out(null);
@@ -68,21 +70,6 @@ export async function game3({name,arg='',state,id,now=Date.now(),choose=randomIn
         if(!g.ids.includes(id))return out(null);
         if(arg.startsWith('resposta ')){if(arg.slice(9).normalize('NFD').replace(/\p{M}/gu,'')===cases[g.case].answer){recordGame(state,'detetive',id,'w');delete db[name];return out('🔎 Mistério resolvido por '+label(id)+'!',true);}return out('Ainda não. Reveja as pistas.');}
         return out(cases[g.case].story+'\n'+cases[g.case].opts);
-    }
-    if(name==='stop'){
-        if(arg==='novo'){if(g)return out('Rodada já aberta.');g=db[name]={ids:[id],letter:Object.keys(words)[choose(4)],answers:{},expires:now+600000};return out('📝 STOP letra '+g.letter.toUpperCase()+'! Categorias: animal, fruta, cor. :stop entrar; :stop resposta animal | fruta | cor. Dicionário local simplificado.',true);}
-        if(!g)return out('Use :stop novo.');
-        if(arg==='entrar'&&!g.ids.includes(id)&&g.ids.length<6){g.ids.push(id);return out('Entrou.',true);}
-        if(!g.ids.includes(id))return out(null);
-        if(arg.startsWith('resposta ')){
-            if(g.answers[id]!==undefined)return out('Você já respondeu.');
-            const a=arg.slice(9).split('|').map(s=>s.trim().normalize('NFD').replace(/\p{M}/gu,'').toLowerCase());
-            if(a.length!==3)return out('Envie três palavras separadas por |.');
-            const list=words[g.letter],score=a.reduce((n,v,i)=>n+(list.slice(i*2,i*2+2).includes(v)?10:0),0);
-            g.answers[id]=score;recordGame(state,'stop',id,'c',score);return out('Resposta registrada: '+score+'/30. Use :stop placar.',true);
-        }
-        if(arg==='encerrar'&&g.ids[0]===id){const scores=Object.entries(g.answers).sort((a,b)=>b[1]-a[1]).map(([k,v])=>label(k)+': '+v);delete db[name];return out('🏁 '+(scores.join('\n')||'Sem respostas.'),true);}
-        return out('Letra '+g.letter.toUpperCase()+'\n'+Object.entries(g.answers).map(([k,v])=>label(k)+': '+v).join('\n'));
     }
     if(name==='coop'){
         if(arg==='novo'){if(g)return out('Missão aberta.');db[name]={ids:[id],done:[],expires:now+86400000};return out('🌿 Missão cooperativa: restaurar o jardim. :coop entrar, depois :coop ajudar. Precisa de 2 a 6 pessoas.',true);}
