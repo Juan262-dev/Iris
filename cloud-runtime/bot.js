@@ -4,6 +4,7 @@ import { useCloudAuthState } from '../lib/Initialize/cloudAuth.js';
 import { decideCommand, loadChatSettings } from './chatSettings.js';
 import { parseExtra, makeFeatures } from './features.js';
 import { infinityMedia } from './infinity.js';
+import { makeWorldSessions } from './world.js';
 import sharp from 'sharp';
 import { makeTextSticker } from './sticker.js';
 import { stickerCommand, sendSoundSticker } from './stickerCommands.js';
@@ -56,6 +57,9 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     });
     let pending = false;
     let closed = false;
+    const worldVerify=async({jid,route})=>{if(closed||lifecycle.stopping||!chats.has(jid)||!route)return false;try{const meta=await sock.groupMetadata(jid);return !closed&&chats.has(jid)&&(meta.participants||[]).some(p=>[p.id,p.lid,p.phoneNumber].map(unoRoute).includes(route));}catch{return false;}};
+    const world=makeWorldSessions({verify:worldVerify,operate:(identity,command)=>features.world(identity,command)});
+    lifecycle.world=input=>closed||lifecycle.stopping?{status:503}:world.rpc(input);
     const seen = new Set();
     const allowCommand = makeLimiter();
     let commandQueue = Promise.resolve();
@@ -248,6 +252,17 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 } else if (activity) {
                     try{response=await features.activity({jid,actor,command:activity,sock,msg,owner});}
                     catch{console.error('Iris: short activity processing failed');}
+                } else if(extra?.name==='world'){
+                    const identity={jid,actor,route:unoRoute(owner?sock.user?.id:msg.key?.participant)};
+                    if(extra.arg==='sair'){world.revoke(identity);response='🌸 Sessão do Íris World revogada.';}
+                    else if(extra.arg){response='🌸 Use :world ou :world sair. Nunca envie o código de acesso no grupo.';}
+                    else try{
+                        if(!await worldVerify(identity)||!await features.world(identity)){response='🌸 Use :perfil e confirme que o RPG está permitido neste grupo.';}
+                        else{const code=world.issue(identity);if(!code)response='🌸 Limite de sessões atingido. Tente mais tarde.';
+                            else try{await sock.sendMessage(identity.route,{text:'🌸 Íris World — https://iris-cloud-oqit.onrender.com/world\nCódigo de acesso temporário (5 minutos):\n'+code+'\nCole somente no site. Não compartilhe. :world sair no grupo revoga a sessão.'});response='🌸 Código do Íris World enviado no privado. Abra https://iris-cloud-oqit.onrender.com/world';}
+                            catch{world.revoke(identity);response='🌸 Não consegui entregar o código no privado. Nenhum código será mostrado no grupo.';}
+                        }
+                    }catch{response='🌸 Íris World indisponível no momento.';}
                 } else if (extra&&mediaNames.has(extra.name)){
                     const accepted=mediaQueue.add(async()=>{
                         if(closed||!chats.has(jid))return;
