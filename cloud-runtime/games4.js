@@ -11,7 +11,7 @@ const questions=[
 const card=(q)=>q[0]+'\n'+q[1].map((x,i)=>(i+1)+'. '+x).join('\n');
 const tiles=()=>Array.from({length:7},(_,i)=>Array.from({length:7-i},(_,j)=>[i,i+j])).flat();
 const colorNames={v:'vermelho',a:'amarelo',g:'verde',b:'azul'};
-const numbers=['v','a','g','b'].flatMap(c=>Array.from({length:10},(_,i)=>[c+i,c+i]).flat());
+const numbers=[...['v','a','g','b'].flatMap(c=>[c+'0',...Array.from({length:9},(_,i)=>[c+(i+1),c+(i+1)]).flat(),c+'s',c+'s',c+'r',c+'r',c+'d',c+'d']),'c','c','c','c','c4','c4','c4','c4'];
 const bot='iris-bot';
 function spawn(b,choose){const free=b.map((v,i)=>v===0?i:-1).filter(i=>i>=0);if(free.length)b[free[choose(free.length)]]=choose(10)===0?4:2;}
 export function slide2048(b,dir){
@@ -56,46 +56,49 @@ export async function game4({name,arg='',state,id,now=Date.now(),choose=randomIn
     }
     if(name==='unobot'){
         const all=ownGame(db,name,id,now);let g=all[id];
-        const pack=async notice=>{const privateHands=await unoPrivate(g,id);for(const item of privateHands)item.content.caption=item.content.caption.replace(/Jogue no grupo:[^\n]*/,'Jogue no grupo: :unobot pos 1 ou :unobot comprar.');return {unoDelivery:{public:await unoPublic(g,notice+'\n:unobot pos 1 | comprar | mao | sair'),private:privateHands}};};
+        const pack=async notice=>{const privateHands=await unoPrivate(g,id);for(const item of privateHands)item.content.caption=item.content.caption.replace(/Jogue no grupo:[^\n]*/,'Jogue no grupo: :unobot pos 1 azul (cor para coringas) ou :unobot comprar.');return {unoDelivery:{public:await unoPublic(g,notice+'\n:unobot pos 1 | comprar | mao | sair'),private:privateHands}};};
         if(arg==='sair'){delete all[id];return out('UNO solo encerrado; autorização privada removida.',true);}
-        if(arg==='novo'){if(g)return out('Já existe uma partida.');if(Object.keys(all).length>=30)return out('Limite de partidas.');if(!validUnoRoute(route))return out('Não consegui validar seu contato.');g=all[id]={ids:[id,bot],names:{[id]:label(id),[bot]:'Íris'},routes:{[id]:route},hands:{[id]:[],[bot]:[]},deck:shuffle(numbers.slice(),choose),discard:[],dir:1,turn:0,expires:now+day};for(const k of g.ids)for(let j=0;j<7;j++)g.hands[k].push(g.deck.pop());const top=g.deck.pop();g.discard.push(top);g.color=top[0];return out(await pack('UNO solo numérico (sem cartas especiais). Sua mão será enviada somente no privado.'),true);}
+        if(arg==='novo'){if(g)return out('Já existe uma partida.');if(Object.keys(all).length>=30)return out('Limite de partidas.');if(!validUnoRoute(route))return out('Não consegui validar seu contato.');g=all[id]={ids:[id,bot],names:{[id]:label(id),[bot]:'Íris'},routes:{[id]:route},hands:{[id]:[],[bot]:[]},deck:shuffle(numbers.slice(),choose),discard:[],dir:1,turn:0,expires:now+day};for(const k of g.ids)for(let j=0;j<7;j++)g.hands[k].push(g.deck.pop());const top=g.deck.splice(g.deck.findIndex(c=>/^[vagb]\d$/.test(c)),1)[0];g.discard.push(top);g.color=top[0];return out(await pack('UNO solo com pular, inverter, +2, coringa e +4. Sua mão será enviada somente no privado.'),true);}
         if(!g)return out('Use :unobot novo para jogar e autorizar a mão no privado.');
         if(arg==='pv'){if(!validUnoRoute(route))return out('Contato inválido.');g.routes[id]=route;return out(await pack('Mão privada atualizada.'),true);}
         if(!arg||arg==='mesa')return out(await unoPublic(g,'UNO solo • :unobot mao para receber sua mão.'));
         if(arg==='mao')return out(await pack('Mão enviada no privado.'));
         const take=()=>{if(!g.deck.length&&g.discard.length>1){const last=g.discard.pop();g.deck=shuffle(g.discard,choose);g.discard=[last];}return g.deck.pop();};
-        const legal=c=>c[0]===g.color||c[1]===g.discard.at(-1)[1];
-        const play=(k,c)=>{g.hands[k].splice(g.hands[k].indexOf(c),1);g.discard.push(c);g.color=c[0];};
-        if(arg==='comprar'){const c=take();if(c)g.hands[id].push(c);}
-        else{const m=/^(?:pos )([1-9]\d?)$/.exec(arg);const c=m?g.hands[id][Number(m[1])-1]:arg;if(!c||!g.hands[id].includes(c)||!legal(c))return out('Carta inválida. Consulte :unobot mao.');play(id,c);}
-        if(!g.hands[id].length){award(state,id,name,3);const result=await unoPublic(g,'Você venceu a Íris!');delete all[id];return out(result,true);}
-        const c=g.hands[bot].find(legal);if(c)play(bot,c);else{const drawn=take();if(drawn)g.hands[bot].push(drawn);}
-        if(!g.hands[bot].length){const result=await unoPublic(g,'Íris venceu!');delete all[id];return out(result,true);}
-        g.expires=now+day;return out(await pack(c?'Íris jogou uma carta.':'Íris comprou uma carta.'),true);
+        const legal=(c,k)=>c==='c'||c==='c4'&&!g.hands[k].some(v=>v[0]===g.color)||!c.startsWith('c')&&(c[0]===g.color||!g.discard.at(-1).startsWith('c')&&c.slice(1)===g.discard.at(-1).slice(1));
+        const draw=(k,n)=>{for(let i=0;i<n;i++){const c=take();if(c)g.hands[k].push(c);}};
+        const play=(k,c,color)=>{g.hands[k].splice(g.hands[k].indexOf(c),1);g.discard.push(c);g.color=c.startsWith('c')?color:c[0];const other=k===id?bot:id;if(c==='c4'||c[1]==='d')draw(other,c==='c4'?4:2);return c==='c4'||['d','s','r'].includes(c[1]);};
+        const done=async(k)=>{if(k===id)award(state,id,name,3);const p=state.players[id];if(p){p.matchHistory5??=[];p.matchHistory5.push({game:name,result:k===id?'vitória':'derrota',at:now});p.matchHistory5=p.matchHistory5.slice(-30);}const result=await unoPublic(g,k===id?'Você venceu a Íris!':'Íris venceu!');delete all[id];return out(result,true);};
+        let again=false;
+        if(arg==='gritar')return out(g.hands[id].length===1?'UNO!':'Você precisa ter uma carta.');
+        if(arg==='comprar')draw(id,1);
+        else{const m=/^(?:pos |posicao )?([1-9]\d?|[vagb][0-9srd]|c4?)(?: (vermelho|amarelo|verde|azul))?$/.exec(arg);const c=m&&(/^\d+$/.test(m[1])?g.hands[id][Number(m[1])-1]:m[1]);const color=m&&Object.keys(colorNames).find(k=>colorNames[k]===m[2]);if(!c||!g.hands[id].includes(c)||!legal(c,id)||c.startsWith('c')&&!color)return out('Carta inválida. Consulte :unobot mao. Coringa exige cor; +4 exige ausência de carta da cor atual.');again=play(id,c,color);if(!g.hands[id].length)return done(id);}
+        let n=0,notice=again?'Sua carta especial mantém sua vez.':'';
+        while(!again&&n++<30){const c=g.hands[bot].find(v=>!v.startsWith('c')&&legal(v,bot))||g.hands[bot].find(v=>legal(v,bot));if(!c){draw(bot,1);notice+=' Íris comprou.';break;}const color=Object.keys(colorNames).sort((a,b)=>g.hands[bot].filter(x=>x[0]===b).length-g.hands[bot].filter(x=>x[0]===a).length)[0];const extra=play(bot,c,color);notice+=' Íris jogou '+c+'.';if(!g.hands[bot].length)return done(bot);if(!extra)break;}
+        g.expires=now+day;return out(await pack(notice||'Sua vez.'),true);
     }
     let g=db[name];if(g&&g.expires<=now){delete db[name];g=null;}
     if(arg==='sair'){if(g?.ids?.[0]===id||name==='domino'&&g?.ids?.includes(id)||owner){delete db[name];return out('Partida encerrada.',true);}return out('Somente o criador encerra.');}
     if(name==='domino'){
-        if(arg==='novo'||arg==='desafio'){if(g)return out('Já existe um dominó.');db[name]={ids:[id],routes:{},expires:now+600000};return out('Dominó de dois jogadores. :domino entrar; cada um :domino pv; criador :domino iniciar.',true);}
+        if(arg==='novo'||arg==='desafio'){if(g)return out('Já existe um dominó.');db[name]={ids:[id],routes:{},expires:now+600000};return out('Dominó de 2 a 4 jogadores. :domino entrar; cada um :domino pv; criador :domino iniciar.',true);}
         if(!g)return out('Use :domino novo.');
-        if(arg==='entrar'){if(g.ids.length!==1||g.ids.includes(id))return out('Desafio indisponível.');g.ids.push(id);return out('Dupla pronta. Cada jogador confirma :domino pv.',true);}
+        if(arg==='entrar'){if(g.hands||g.ids.length>=4||g.ids.includes(id))return out('Desafio indisponível.');g.ids.push(id);return out('Inscrição registrada. Cada jogador confirma :domino pv.',true);}
         if(!g.ids.includes(id))return out('Você não participa.');
         const pack=async (ids,caption)=>({unoDelivery:{public:caption,private:ids.filter(k=>validUnoRoute(g.routes[k])).map(k=>({to:g.routes[k],content:{text:'Sua mão de dominó: '+g.hands[k].map(t=>t.join('-')).join(' | ')+'\n:domino jogar 1-2 esquerda (ou direita); :domino comprar.'}}))}});
         if(arg==='pv'){if(!validUnoRoute(route)||Object.entries(g.routes).some(([k,v])=>k!==id&&v===route))return out('Contato inválido.');g.routes[id]=route;return out(g.hands?await pack([id],'Mão privada reenviada.'):'PV confirmado.',true);}
-        if(arg==='iniciar'){if(g.ids[0]!==id||g.ids.length!==2||g.hands||!g.ids.every(k=>validUnoRoute(g.routes[k])))return out('Criador inicia após os dois confirmarem PV.');g.deck=shuffle(tiles(),choose);g.hands=Object.fromEntries(g.ids.map(k=>[k,g.deck.splice(0,7)]));g.chain=[g.deck.pop()];g.turn=0;g.passes=0;g.expires=now+day;return out(await pack(g.ids,'Dominó iniciado. Mesa: '+g.chain[0].join('-')+' | Vez: '+label(g.ids[0])),true);}
+        if(arg==='iniciar'){if(g.ids[0]!==id||g.ids.length<2||g.ids.length>4||g.hands||!g.ids.every(k=>validUnoRoute(g.routes[k])))return out('Criador inicia após 2 a 4 jogadores confirmarem PV.');g.deck=shuffle(tiles(),choose);g.hands=Object.fromEntries(g.ids.map(k=>[k,g.deck.splice(0,g.ids.length===4?6:7)]));g.chain=[g.deck.pop()];g.turn=0;g.passes=0;g.expires=now+day;return out(await pack(g.ids,'Dominó iniciado. Mesa: '+g.chain[0].join('-')+' | Vez: '+label(g.ids[0])),true);}
         if(!g.hands)return out('Aguardando início.');
         if(arg==='mao')return out(await pack([id],'Mão privada.'));
         const table=()=> 'Mesa: '+g.chain.map(t=>t.join('-')).join(' | ')+'\n'+g.ids.map(k=>label(k)+': '+g.hands[k].length+' peças').join(' | ')+'\nVez: '+label(g.ids[g.turn]);
         if(!arg||arg==='mesa')return out(table());
         if(g.ids[g.turn]!==id)return out('Aguarde sua vez.');
         const hand=g.hands[id],left=g.chain[0][0],right=g.chain.at(-1)[1],legal=t=>t.includes(left)||t.includes(right);
-        if(arg==='comprar'){if(hand.some(legal))return out('Você possui uma peça jogável.');if(g.deck.length){hand.push(g.deck.pop());return out(await pack([id],table()),true);}g.turn=1-g.turn;g.passes++;if(g.passes>=2){const sums=g.ids.map(k=>g.hands[k].flat().reduce((a,b)=>a+b,0));const w=sums[0]===sums[1]?null:g.ids[sums[0]<sums[1]?0:1];if(w)award(state,w,name,3);delete db[name];return out(w?label(w)+' venceu por menor soma.':'Empate!',true);}return out(table(),true);}
+        if(arg==='comprar'){if(hand.some(legal))return out('Você possui uma peça jogável.');if(g.deck.length){hand.push(g.deck.pop());return out(await pack([id],table()),true);}g.turn=(g.turn+1)%g.ids.length;g.passes++;if(g.passes>=g.ids.length){const sums=g.ids.map(k=>g.hands[k].flat().reduce((a,b)=>a+b,0));const low=Math.min(...sums), winners=g.ids.filter((_,i)=>sums[i]===low),w=winners.length===1?winners[0]:null;if(w)award(state,w,name,3);delete db[name];return out(w?label(w)+' venceu por menor soma.':'Empate!',true);}return out(table(),true);}
         const m=/^jogar ([0-6])-([0-6]) (esquerda|direita)$/.exec(arg);if(!m)return out('Use :domino jogar 1-2 esquerda ou direita.');
         const a=Number(m[1]),b=Number(m[2]),i=hand.findIndex(t=>t.includes(a)&&t.includes(b)&&(a!==b||t[0]===t[1])),end=m[3]==='esquerda'?left:right;
         if(i<0||![a,b].includes(end))return out('Peça não disponível ou incompatível.');
         const other=a===end?b:a;if(m[3]==='esquerda')g.chain.unshift([other,end]);else g.chain.push([end,other]);hand.splice(i,1);g.passes=0;
-        if(!hand.length){award(state,id,name,3);delete db[name];return out(label(id)+' venceu o dominó!',true);}
-        g.turn=1-g.turn;g.expires=now+day;return out(await pack([id],table()),true);
+        if(!hand.length){award(state,id,name,3);for(const k of g.ids){const p=state.players[k];if(p){p.matchHistory5??=[];p.matchHistory5.push({game:name,result:k===id?'vitória':'derrota',at:now});p.matchHistory5=p.matchHistory5.slice(-30);}}delete db[name];return out(label(id)+' venceu o dominó!',true);}
+        g.turn=(g.turn+1)%g.ids.length;g.expires=now+day;return out(await pack([id],table()),true);
     }
     if(name==='cruzadas'){
         const p=puzzles[0];if(arg==='novo'){if(g)return out('Já existe uma cruzada.');g=db[name]={ids:[id],solved:[],expires:now+day};}
