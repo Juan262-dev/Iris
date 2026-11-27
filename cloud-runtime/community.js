@@ -25,14 +25,14 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
         if(arg==='desafio'){
             if(g)return result('Já existe um desafio ou partida.');
             x.velha={x:id,o:null,b:Array(9).fill(''),turn:id,expires:now+600000};
-            return result('❌ Desafio de '+label(id)+'. Outro jogador: !iris velhadupla aceitar.',true);
+            return result('❌ Desafio de '+label(id)+'. Outro jogador: :velhadupla aceitar.',true);
         }
         if(arg==='aceitar'){
             if(!g||g.o||g.x===id)return result('Nenhum desafio disponível para você.');
             g.o=id;g.expires=now+86400000;
             return result(grid(g.b)+'\nX: '+label(g.x)+' | O: '+label(g.o)+'\nX começa. Envie casa 1 até casa 9.',true);
         }
-        if(!g||![g.x,g.o].includes(id))return result(activeOnly?null:'Use !iris velhadupla desafio ou aceitar.');
+        if(!g||![g.x,g.o].includes(id))return result(activeOnly?null:'Use :velhadupla desafio ou aceitar.');
         if(arg==='sair'){delete x.velha;return result('Partida encerrada.',true);}
         if(!g.o)return result('Aguardando outro jogador.');
         if(!arg||arg==='tabuleiro')return result(grid(g.b)+'\nVez de '+label(g.turn));
@@ -45,11 +45,11 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
         return result(board+'\nVez de '+label(g.turn)+'. Envie casa 1 até casa 9.',true);
     }
     if(name==='enquete'){
-        if(x.poll&&x.poll.expires>now)return result('Já existe uma enquete. Encerre com !iris encerrarenquete.');
+        if(x.poll&&x.poll.expires>now)return result('Já existe uma enquete. Encerre com :encerrarenquete.');
         const parts=arg.split('|').map(s=>s.trim());
-        if(parts.length<3||parts.length>6||parts.some(s=>!s||s.length>100)||new Set(parts.slice(1)).size!==parts.length-1)return result('Use !iris enquete pergunta | opção 1 | opção 2 (até 5 opções).');
+        if(parts.length<3||parts.length>6||parts.some(s=>!s||s.length>100)||new Set(parts.slice(1)).size!==parts.length-1)return result('Use :enquete pergunta | opção 1 | opção 2 (até 5 opções).');
         x.poll={question:parts[0],options:parts.slice(1),votes:{},expires:now+86400000};
-        return result('📊 '+parts[0]+'\n'+parts.slice(1).map((s,i)=>(i+1)+'. '+s).join('\n')+'\nEnvie !iris votar 1 ou voto 1. Votos são pseudônimos e podem ser alterados; encerra em 24h.',true);
+        return result('📊 '+parts[0]+'\n'+parts.slice(1).map((s,i)=>(i+1)+'. '+s).join('\n')+'\nEnvie :votar 1 ou voto 1. Votos são pseudônimos e podem ser alterados; encerra em 24h.',true);
     }
     if(['votar','votos','encerrarenquete'].includes(name)){
         const poll=x.poll;
@@ -60,19 +60,19 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
         if(poll.expires<=now)return result(activeOnly?null:'Enquete encerrada por prazo.');
         if(!/^[1-5]$/.test(arg)||Number(arg)>poll.options.length)return result('Escolha uma opção válida.');
         if(!Object.hasOwn(poll.votes,id)&&Object.keys(poll.votes).length>=200)return result('Limite de votos atingido.');
-        poll.votes[id]=Number(arg);return result('🗳️ Voto registrado. Use !iris votos para ver o total.',true);
+        poll.votes[id]=Number(arg);return result('🗳️ Voto registrado. Use :votos para ver o total.',true);
     }
     if(name==='avisogrupo'){
-        if(!arg||arg.length>300)return result('Use !iris avisogrupo texto (até 300 caracteres).');
+        if(!arg||arg.length>300)return result('Use :avisogrupo texto (até 300 caracteres).');
         return result('📢 *Aviso do responsável pelo grupo*\n'+arg);
     }
     if(name==='mensagembemvindo'){
-        if(!arg||arg.length>250)return result('Use !iris mensagembemvindo texto ou padrao. Ative !iris boasvindas on.');
+        if(!arg||arg.length>250)return result('Use :mensagembemvindo texto ou padrao. Ative :boasvindas on.');
         if(arg==='padrao')delete x.welcomeText;else x.welcomeText=arg;
         return result('Mensagem de boas-vindas atualizada.',true);
     }
-    if(!p)return result('Use !iris perfil para participar da economia virtual.');
-    if(name==='banco')return result('🏦 Carteira: '+p.coins+' | Banco: '+(p.bank||0)+' moedas virtuais. Use !iris depositar 10 ou !iris sacar 10.');
+    if(!p)return result('Use :perfil para participar da economia virtual.');
+    if(name==='banco')return result('🏦 Carteira: '+p.coins+' | Banco: '+(p.bank||0)+' moedas virtuais. Use :depositar 10 ou :sacar 10.');
     if(name==='depositar'||name==='sacar'){
         const n=amount(arg);const bank=p.bank||0;
         if(!n)return result('Informe de 1 a 9999 moedas virtuais.');
@@ -82,7 +82,7 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
     }
     if(name==='transferir'){
         const match=/^([a-f0-9]{6})\s+([1-9]\d{0,3})$/i.exec(arg);
-        if(!match)return result('Use !iris transferir codigo 10. O código é o identificador do perfil no ranking.');
+        if(!match)return result('Use :transferir codigo 10. O código é o identificador do perfil no ranking.');
         const keys=Object.keys(state.players).filter(k=>k.startsWith(match[1].toLowerCase()));
         const n=Number(match[2]),to=keys.length===1?keys[0]:null;
         if(!to||to===id)return result('Destinatário inválido ou ambíguo.');
@@ -97,25 +97,25 @@ export function groupFeature({name,arg='',state,id,owner=false,now=Date.now(),ch
         if(!arg)return result('Profissão: '+(roles[p.role]||'nenhuma')+'\nEscolha: '+Object.keys(roles).join(', '));
         if(!Object.hasOwn(roles,arg))return result('Profissão inválida.');
         if(p.role===arg)return result('Você já escolheu essa profissão.');
-        p.role=arg;return result('Profissão virtual: '+roles[arg]+'. Use !iris trabalhar.',true);
+        p.role=arg;return result('Profissão virtual: '+roles[arg]+'. Use :trabalhar.',true);
     }
     if(name==='trabalhar'){
-        if(!Object.hasOwn(roles,p.role||''))return result('Escolha !iris profissao.');
+        if(!Object.hasOwn(roles,p.role||''))return result('Escolha :profissao.');
         if(p.workDay===day(now))return result('Atividade diária já concluída.');
         p.workDay=day(now);p.coins=Math.min(limit,p.coins+12);p.xp+=2;return result(roles[p.role]+' — atividade concluída: +12 moedas e +2 XP.',true);
     }
     if(name==='tarefadiaria'){
         if(p.dailyTask===day(now))return result('Missão diária concluída!');
-        if(p.workDay!==day(now))return result('🎯 Missão: complete !iris trabalhar hoje.');
+        if(p.workDay!==day(now))return result('🎯 Missão: complete :trabalhar hoje.');
         p.dailyTask=day(now);p.coins=Math.min(limit,p.coins+8);p.xp+=2;return result('🎯 Missão concluída! +8 moedas e +2 XP.',true);
     }
     if(name==='aventura'){
         if(arg==='sair'){delete p.adventure;return result('Aventura encerrada.',true);}
         if(arg==='novo'||!p.adventure){
             if(p.adventureDay===day(now))return result('Você já completou uma aventura hoje.');
-            p.adventure={scene:choose(scenes.length)};return result('🗺️ '+scenes[p.adventure.scene][0]+'\n!iris aventura ajudar | explorar | sair',true);
+            p.adventure={scene:choose(scenes.length)};return result('🗺️ '+scenes[p.adventure.scene][0]+'\n:aventura ajudar | explorar | sair',true);
         }
-        if(!arg)return result(scenes[p.adventure.scene][0]+'\n!iris aventura ajudar ou explorar');
+        if(!arg)return result(scenes[p.adventure.scene][0]+'\n:aventura ajudar ou explorar');
         if(!['ajudar','explorar'].includes(arg))return result('Escolha ajudar, explorar ou sair.');
         const action=scenes[p.adventure.scene][1];delete p.adventure;p.adventureDay=day(now);p.coins=Math.min(limit,p.coins+10);p.xp+=3;
         return result('🌟 '+action+' — missão concluída! +10 moedas e +3 XP.',true);
