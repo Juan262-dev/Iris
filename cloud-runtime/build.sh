@@ -41,6 +41,11 @@ node cloud-runtime/profileCard.test.js
 node --check cloud-runtime/fun.js
 node --check cloud-runtime/funMedia.js
 node cloud-runtime/fun.test.js
+node --check cloud-runtime/games4.js
+node --check cloud-runtime/tournament4.js
+node --check cloud-runtime/community4.js
+node --check cloud-runtime/media4.js
+node cloud-runtime/v4.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
