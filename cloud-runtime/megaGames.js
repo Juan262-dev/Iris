@@ -1,3 +1,4 @@
+import { advanceTournament } from './tournament4.js';
 import { recordGame,displayName } from './profileCard.js';
 import { randomInt } from 'node:crypto';
 import sharp from 'sharp';
@@ -48,7 +49,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         }
         if(!g)return out(activeOnly?null:'Use :uno novo.');
         if(arg==='entrar'){
-            if(g.started||g.ids.includes(id)||g.ids.length>=6)return out('Não é possível entrar.');
+            if(g.tournament4||g.started||g.ids.includes(id)||g.ids.length>=6)return out('Não é possível entrar.');
             g.ids.push(id);return out(label(id)+' entrou. '+g.ids.length+'/6. Confirme :uno pv para receber suas cartas no privado.',true);
         }
         if(!g.ids.includes(id))return out(activeOnly?null:'Você não participa desta mesa.');
@@ -61,6 +62,7 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
             return {unoDelivery:{public:publicBoard?await unoPublic(g,(notice?notice+'\n':'')+unoBoard(g)):notice||null,private:privateHands}};
         };
         if(arg==='sair'){
+            if(g.tournament4)return out('Mesa de torneio. O responsável pode usar :torneiouno cancelar.');
             if(g.started||g.ids[0]===id){delete m.uno;return out('Mesa encerrada. Autorização de envio privado removida.',true);}
             g.ids=g.ids.filter(k=>k!==id);delete g.routes[id];return out('Você saiu e sua autorização foi removida.',true);
         }
@@ -98,11 +100,11 @@ export async function megaGame({name,arg='',state,id,now=Date.now(),choose=rando
         const card=match[1],hand=g.hands[id],top=g.discard.at(-1);
         const chosenColor=Object.keys(colorNames).find(k=>colorNames[k]===match[2]);
         if(!hand.includes(card))return out('🃏 Carta não disponível para você. Use :uno mao para consultar sua mão no privado.');
-        if(card.startsWith('c')&&!chosenColor||!card.startsWith('c')&&(card[0]!==g.color&&card.slice(1)!==top.slice(1)))return out('🃏 Carta incompatível com a mesa. Cor atual: '+colorNames[g.color]+'. Jogue uma carta da mesma cor, mesmo valor ou coringa.');
+        if(card.startsWith('c')&&!chosenColor||!card.startsWith('c')&&(card[0]!==g.color&&(top.startsWith('c')||card.slice(1)!==top.slice(1))))return out('🃏 Carta incompatível com a mesa. Cor atual: '+colorNames[g.color]+'. Jogue uma carta da mesma cor, mesmo valor ou coringa.');
         if(card==='c4'&&hand.some(k=>k[0]===g.color))return out('Coringa +4 só pode ser usado sem carta da cor atual.');
         hand.splice(hand.indexOf(card),1);g.discard.push(card);g.color=card.startsWith('c')?chosenColor:card[0];
         if(hand.length!==1&&g.called)delete g.called[id];
-        if(!hand.length){const result=await unoPublic(g,'🏆 '+g.names[id]+' venceu o UNO!');for(const k of g.ids){if(!Object.hasOwn(stats,k)&&Object.keys(stats).length>=200)continue;const v=stats[k]??={wins:0,losses:0};v[k===id?'wins':'losses']++;}delete m.uno;return out(result,true);}
+        if(!hand.length){const result=await unoPublic(g,'🏆 '+g.names[id]+' venceu o UNO!');for(const k of g.ids){if(!Object.hasOwn(stats,k)&&Object.keys(stats).length>=200)continue;const v=stats[k]??={wins:0,losses:0};v[k===id?'wins':'losses']++;}delete m.uno;result.caption+=advanceTournament(state,g,id,now);return out(result,true);}
         const updated=[id],kind=card.slice(1);
         if(kind==='r'){g.dir=-g.dir;next(g,g.ids.length===2?2:1);}
         else if(kind==='s')next(g,2);
