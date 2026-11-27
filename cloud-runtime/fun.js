@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import { captureName,displayName } from './profileCard.js';
 import { unoRoute } from './unoVisual.js';
 import { friendlyGif,funMenu } from './funMedia.js';
-export const funNames=['fun','abraco','tocarasmaos','amizade','elogio','dupla','quem','verdade','desafio','eununca','chance','8ball','escolher','sorte','frase','adivinha'];
+export const funNames=['fun','abraco','tocarasmaos','amizade','elogio','dupla','quem','verdade','desafio','eununca','chance','8ball','escolher','sorte','frase','adivinha','acenar','celebrar'];
 const out=(text,changed=false)=>({text,changed});
 const truths=['Qual jogo você recomendaria para os amigos?','Qual seria o nome de um planeta inventado por você?','Qual personagem de desenho você acha engraçado?','Qual habilidade artística gostaria de aprender?','Qual foi a parte mais divertida de um jogo que você jogou?'];
 const challenges=['Invente um nome criativo para uma equipe de exploradores.','Descreva um animal usando três emojis.','Crie uma rima com a palavra planeta.','Desenhe uma estrela no papel, se quiser.','Tente criar uma charada sobre um objeto comum.','Escreva uma história de exatamente cinco palavras.'];
@@ -107,7 +107,7 @@ export async function funFeature({name,arg='',state,id,rawName,targets,now=Date.
         if(++g.tries>=20){delete db.riddle;return out('Fim da rodada. A resposta era '+riddles[g.index].a[0]+'.',true);}
         return out('Ainda não! Tente novamente.',true);
     }
-    if(!['abraco','tocarasmaos','amizade','elogio','dupla','quem'].includes(name))return null;
+    if(!['abraco','tocarasmaos','amizade','elogio','dupla','quem','acenar','celebrar'].includes(name))return null;
     if(!active)return out('Use :perfil e depois :fun on para participar voluntariamente das interações.');
     const scope=await targets();
     const pool=Object.keys(db.volunteers).filter(k=>enabled(state,k)&&scope.members.has(k));
@@ -138,7 +138,7 @@ export async function funFeature({name,arg='',state,id,rawName,targets,now=Date.
         const key=id+'-'+to;db.requests[key]={from:id,to,expires:now+300000};
         return out('🤝 '+fromName+' convidou '+toName+' para o medidor fictício. Somente o convidado pode aceitar com :amizade aceitar '+id.slice(0,6)+' em até 5 minutos.',true);
     }
-    const caption=name==='abraco'?fromName+' enviou um abraço virtual amigável para '+toName+'.':name==='tocarasmaos'?fromName+' e '+toName+' receberam um toque de mãos virtual!':fromName+' para '+toName+': '+pick(compliments,choose);
+    const caption=name==='acenar'?fromName+' acenou amigavelmente para '+toName+'.':name==='celebrar'?fromName+' celebrou a amizade e a cooperação com '+toName+'!':name==='abraco'?fromName+' enviou um abraço virtual amigável para '+toName+'.':name==='tocarasmaos'?fromName+' e '+toName+' receberam um toque de mãos virtual!':fromName+' para '+toName+': '+pick(compliments,choose);
     // Both have opted in; no actual physical or romantic interaction is implied.
     return out(await animate(name,caption));
 }
