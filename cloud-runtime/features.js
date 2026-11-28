@@ -1,3 +1,4 @@
+import {games7,controls7,game7,game7Tick,removeGames7} from './games7.js';
 import {removeStop,stopTick} from './stopGame.js';
 import { createHmac, randomInt } from 'node:crypto';
 import { localReply, makeLocalGames, shop, purchase } from './localFun.js';
@@ -30,7 +31,7 @@ import {gameCatalogVisual} from './gameVisual.js';
 import { context5,serialGroups,commandToken,alreadyApplied,markApplied,prune5 } from './transaction5.js';
 import { settings, seal, unseal, request } from '../lib/Initialize/cloudStorage.js';
 
-const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto','jogos','world',...infinityCommands]);
+const simple = new Set(['menu','ping','status','saldo','diario','ranking','dado','moeda','quiz','resposta','perfil','sair','grupo','abrir','fechar','figurinha','s','slonga','som','chat','ia','piada','curiosidade','ppt','numero','xadrez','meme','texto','missoes','resgatar','boasvindas','velha','forca','loja','comprar','inventario','nivel','conquistas','regras','definirregras','criar','remover','usar','comandos','diagnostico',...groupCommands,...converterNames,...gameNames,...economyNames,...adminNames,...studioNames,...games3,...social3,...media3Names,...originalMedia,...originalGames,...originalAdmin,...profileCommands,...funNames,...funMediaNames,...games4,tournamentCommand,...admin4,...economy4,...media4,...packCommands,...interface4,...games5,...community5,...media5,collage5,'menutexto','jogos','world',...infinityCommands,...games7,...controls7]);
 for(const name of retiredGames)simple.delete(name);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin,'backupinfinity']);
 export function parseExtra(text, owner) {
@@ -115,7 +116,7 @@ export function makeFeatures() {
             if(['fun','brincadeiras'].includes(arg.toLowerCase()))return await funMenu();
             return premiumMenu(arg,theme,arg?menu(arg):'🌸 Íris Cloud 6.0 • :infinity | :menu jogos | midia | economia | diversao | admin | geral. :menutexto para lista completa.');
         }
-        if(name==='versao')return '🌸 Íris Cloud 6.0 Infinity — Game Center, jogos cooperativos, estudos e estúdio local. :infinity';
+        if(name==='versao')return '🌸 Íris Cloud 7.0 — Game Center visual, novos jogos, temas, histórico e partidas persistentes. :jogos | :tema7 | :estatisticas7 | :medalhas7';
         if (name === 'ping') return '🌸 Íris — online!';
         if (name === 'status') return '🌸 Íris conectada. Grupo autorizado. Comandos e respostas de jogos ativos.';
         if (name === 'diagnostico') { const d=runtimeStatus(); return '⚙️ Íris Cloud\nWhatsApp: '+d.whatsapp+'\nBanco: '+d.storage+'\nFila de mídia: '+d.media+'\nFila de comandos: '+d.commands+'\nProcessados: '+d.processed+' | Erros: '+d.errors+' | Lentos: '+d.slow+' | Descartados por limite: '+d.dropped+'\nMemória: '+Math.round(process.memoryUsage().rss/1048576)+' MB\nHeap: '+Math.round(process.memoryUsage().heapUsed/1048576)+' MB\nTempo online: '+Math.floor(process.uptime()/60)+' min\nNode: '+process.versions.node+'\nOperações: serialização por grupo; deduplicação persistente de mutações (até 10 min).'; }
@@ -183,6 +184,7 @@ export function makeFeatures() {
         const {s,state} = await readGroup(jid);
         const id = hash(s.key, jid + ':' + actor);
         const player = state.players[id];
+        if(games7.includes(name)||controls7.includes(name)){if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;const result=await game7({name,arg,state,id,owner});if(result?.changed)await save(s,state);return result?.text??null;}
         if(infinityCommands.includes(name)){
             const category=infinityGames.includes(name)||infinityStudy.includes(name)?'jogos':name==='backupinfinity'||name==='infinity'||name==='ajudainfinity'?null:'economia';
             const required=category&&groupConfig(state).roles?.[category];
@@ -268,7 +270,7 @@ export function makeFeatures() {
             return '🌸 Perfil virtual criado: '+displayName(state,id)+' | Código '+id.slice(0,6)+'. Nome de exibição e dados do jogo são guardados neste grupo. :nomeperfil para editar; :perfilvisual para ver; :sair para apagar.';
         }
         if (name === 'sair') {
-            { delete state.players[id]; removeMegaProfile(state,id); removeSocial(state,id); removeFun(state,id); removeGames4(state,id); removeGames5(state,id); removeStop(state,id); removeCommunity5(state,id); removeInfinity(state,id); if(state.legacyGames5)for(const k of Object.keys(state.legacyGames5))if(k==='grupo:'+id||k.startsWith('grupo:'+id+':'))delete state.legacyGames5[k]; if(state.tournament4?.ids?.includes(id)){if(state.megaGames?.uno?.tournament4)delete state.megaGames.uno;delete state.tournament4;} if(state.megaGames?.unoStats)delete state.megaGames.unoStats[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
+            { delete state.players[id]; removeMegaProfile(state,id); removeSocial(state,id); removeFun(state,id); removeGames4(state,id); removeGames5(state,id); removeGames7(state,id); removeStop(state,id); removeCommunity5(state,id); removeInfinity(state,id); if(state.legacyGames5)for(const k of Object.keys(state.legacyGames5))if(k==='grupo:'+id||k.startsWith('grupo:'+id+':'))delete state.legacyGames5[k]; if(state.tournament4?.ids?.includes(id)){if(state.megaGames?.uno?.tournament4)delete state.megaGames.uno;delete state.tournament4;} if(state.megaGames?.unoStats)delete state.megaGames.unoStats[id]; if(state.community?.poll?.votes)delete state.community.poll.votes[id]; await save(s,state); }
             return '🌸 Seu perfil virtual foi removido.';
         }
         if (name === 'saldo') return player ? '🌸 Saldo: ' + player.coins + ' moedas virtuais | XP: ' + player.xp : '🌸 Use :perfil para participar.';
@@ -362,6 +364,7 @@ export function makeFeatures() {
     wrapped.activity=input=>execute({...input,shorthand:true},input.command.name,()=>handle.activity(input));
     wrapped.world=async()=>null; // RPG retired; retain legacy data without serving it.
     wrapped.stopTick=({jid,now})=>groupSerial(jid,async()=>{const {s,state}=await readGroupRaw(jid);const result=stopTick(state,now);if(result.changed)await save(s,state);return result.text;});
+    wrapped.game7Tick=({jid,now})=>groupSerial(jid,async()=>{const {s,state}=await readGroupRaw(jid);const result=await game7Tick(state,now);if(result.changed)await save(s,state);return result.notices;});
     wrapped.schedule=handle.schedule;wrapped.welcome=handle.welcome;
     return wrapped;
 }
