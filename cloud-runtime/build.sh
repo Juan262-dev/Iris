@@ -87,6 +87,8 @@ node cloud-runtime/gameVisual.test.js
 node --check cloud-runtime/games7.js
 node --check cloud-runtime/gameQuotes7.js
 node cloud-runtime/games7.test.js
+node --check cloud-runtime/inbound7.js
+node cloud-runtime/inbound7.test.js
 cd cloud-runtime
 node --input-type=module -e 'import * as b from "@whiskeysockets/baileys"; if(typeof (b.makeWASocket || b.default)!=="function" || typeof b.initAuthCreds!=="function" || !b.BufferJSON || !b.proto) throw Error("Baileys exports unavailable"); console.log("Iris: Baileys dependency import passed")'
 
