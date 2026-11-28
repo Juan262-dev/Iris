@@ -45,11 +45,13 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
     const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5,...infinityMedia]);
     let openedAt=0;
-    const pairingNumber = lifecycle.localPrivate ? (lifecycle.pairingNumber || '') : (process.env.IRIS_PAIRING_PHONE || '');
-    const auth = await useCloudAuthState('0', baileys);
+    const relink=lifecycle.relink===true;
+    lifecycle.relink=false;
+    const auth = await useCloudAuthState('0', baileys,{relink});
+    const pairingNumber = relink?auth.pairingNumber:lifecycle.localPrivate ? (lifecycle.pairingNumber || '') : (process.env.IRIS_PAIRING_PHONE || '');
     console.log('Iris: stored device registration: ' + (auth.state.creds.registered === true ? 'registered' : 'not_registered'));
     if (process.env.IRIS_DIAGNOSTIC_ONLY === 'true') return;
-    if (!auth.state.creds.registered && (!/^\d{8,15}$/.test(pairingNumber) || process.env.IRIS_ALLOW_PAIRING !== 'true')) {
+    if (!auth.state.creds.registered && (!/^\d{8,15}$/.test(pairingNumber) || (!relink&&process.env.IRIS_ALLOW_PAIRING !== 'true'))) {
         console.log('Iris: initial pairing is not enabled.');
         return;
     }
@@ -142,16 +144,16 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             console.log('Iris: check linked-device status before restarting.');
             return;
         }
-        if (update.qr && !auth.state.creds.registered && !pending && (!lifecycle.localPrivate||!lifecycle.pairingRequested) && process.env.IRIS_ALLOW_PAIRING === 'true') {
+        if (update.qr && !auth.state.creds.registered && !pending && (!(lifecycle.localPrivate||relink)||!lifecycle.pairingRequested) && (relink||process.env.IRIS_ALLOW_PAIRING === 'true')) {
             pending = true;
-            if(lifecycle.localPrivate)lifecycle.pairingRequested=true;
+            if(lifecycle.localPrivate||relink)lifecycle.pairingRequested=true;
             try {
                 const code = await sock.requestPairingCode(pairingNumber);
                 // Never emit a local private pairing code to logs or the shared Manager.
-                if(lifecycle.localPrivate){lifecycle.pairingNumber='';if(!closed&&!lifecycle.stopping)lifecycle.onPairingCode?.(code);}
+                if(lifecycle.localPrivate||relink){lifecycle.pairingNumber='';if(!closed&&!lifecycle.stopping)lifecycle.onPairingCode?.(code);}
                 else console.log('Iris: private device pairing code: '+code);
             } catch {
-                if(lifecycle.localPrivate){lifecycle.pairingNumber='';lifecycle.onPairingError?.();}
+                if(lifecycle.localPrivate||relink){lifecycle.pairingNumber='';lifecycle.onPairingError?.();}
                 console.error('Iris: pairing request failed; check the official linked-device screen.');
             }
         }
