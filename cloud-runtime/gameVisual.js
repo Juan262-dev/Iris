@@ -5,7 +5,7 @@ const rect=(x,y,w,h,fill,r=12,stroke='none',sw=1)=>'<rect x="'+x+'" y="'+y+'" wi
 const txt=(x,y,v,size=23,fill='#f6f3ff',anchor='start',weight=400)=>'<text x="'+x+'" y="'+y+'" font-size="'+size+'" fill="'+fill+'" text-anchor="'+anchor+'" font-weight="'+weight+'">'+esc(v)+'</text>';
 const circle=(x,y,r,fill,stroke='none',sw=1)=>'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+sw+'"/>';
 function svg(h,body){return Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+h+'"><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#19152e"/><stop offset="1" stop-color="#272344"/></linearGradient></defs>'+rect(0,0,W,h,'url(#bg)',0)+'<g font-family="sans-serif">'+body+'</g></svg>');}
-const header=(title,sub,accent)=>rect(24,24,672,8,accent,4)+txt(30,66,'ÍRIS GAME CENTER',17,'#c5b9e4','start',700)+txt(30,112,title,36,'#fff','start',700)+txt(30,145,sub,20,'#d2cce6');
+const header=(title,sub,accent)=>rect(24,24,672,8,accent,4)+txt(30,66,'ÍRIS GAME CENTER',17,'#c5b9e4','start',700)+txt(30,112,title,Math.min(36,Math.floor(1040/Math.max(1,title.length))),'#fff','start',700)+txt(30,145,sub,20,'#d2cce6');
 const footer=(y,line)=>rect(24,y,672,58,'#33294e',12)+txt(360,y+36,line,19,'#eee5ff','middle',600);
 const png=async(h,b,caption)=>({image:await sharp(svg(h,b)).png().toBuffer(),caption});
 const pips=[[],[[1,1]],[[0,0],[2,2]],[[0,0],[1,1],[2,2]],[[0,0],[2,0],[0,2],[2,2]],[[0,0],[2,0],[1,1],[0,2],[2,2]],[[0,0],[2,0],[0,1],[2,1],[0,2],[2,2]]];
