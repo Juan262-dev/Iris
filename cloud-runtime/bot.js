@@ -1,3 +1,4 @@
+import {inboundMessage,acceptUpsert} from './inbound7.js';
 import {makeGameQuotes} from './gameQuotes7.js';
 import {stopForm,gameNotice,visualGameResponse} from './gameVisual.js';
 import {gameCatalog} from './gameHub.js';
@@ -204,9 +205,11 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     let nextPingLog=0;
     let pendingBatches=0;
     sock.ev.on('messages.upsert', ({ messages, type }) => {
-        if (closed || type !== 'notify') return;
+        if (closed || !['notify','append'].includes(type)) return;
         const normal=[];
-        for(const msg of messages||[]){
+        for(const raw of messages||[]){
+            const msg=inboundMessage(raw);
+            if(!acceptUpsert(type,msg,{enabled:chats.has(msg.key?.remoteJid),openedAt}))continue;
             const jid=msg.key?.remoteJid,id=msg.key?.id;
             const plain=msg.message?.conversation||msg.message?.extendedTextMessage?.text||'';
             if(!jid?.endsWith('@g.us')){if(fresh(msg)&&stopCandidate(msg)&&normal.length<30)normal.push(msg);continue;}
@@ -220,7 +223,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             if(!id||!fresh(msg)||!remember(jid,id))continue;
             const enabled=chats.has(jid),actor=getActor(msg);
             const log=Date.now()>=nextPingLog;
-            if(log){nextPingLog=Date.now()+15000;console.log('Iris: ping received; group authorized='+enabled);}
+            if(log){nextPingLog=Date.now()+15000;console.log('Iris: ping received; group authorized='+enabled+'; event='+type+'; owner='+(msg.key?.fromMe===true));}
             if(!enabled||!actor||!allowCommand(jid,actor)||pingPending>=3)continue;
             pingPending++;
             Promise.resolve().then(()=>deliver(jid,'🌸 Íris — online!',msg))
