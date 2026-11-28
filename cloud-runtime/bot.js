@@ -1,3 +1,4 @@
+import {makeGameQuotes} from './gameQuotes7.js';
 import {stopForm,gameNotice,visualGameResponse} from './gameVisual.js';
 import {gameCatalog} from './gameHub.js';
 import {makeStopTickets,formatStopAnswers,stopPrompt,stopSelfRoutes,stopSelfRecipient,stopPrivateCandidate} from './stopPrivate.js';
@@ -38,6 +39,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
     const chats = await loadChatSettings();
     const features = makeFeatures();
     const stopTickets=makeStopTickets();
+    const gameQuotes=makeGameQuotes();
     setRuntime('whatsapp','conectando');
     const mediaQueue=makeJobQueue({onChange:n=>setRuntime('media',n)});
     const mediaNames=new Set(['s','figurinha','slonga','som','texto','meme',...converterNames,...studioNames,...media3Names,...originalMedia,...funMediaNames,...media4,...media5,...infinityMedia]);
@@ -87,6 +89,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 try{const action=await features.schedule({jid,now:Date.parse(stamp+':00Z')});
                     if(action&&!closed&&chats.has(jid))await sock.groupSettingUpdate(jid,action);
                     const stopResult=await features.stopTick({jid,now:Date.now()});if(stopResult&&!closed&&chats.has(jid))await sock.sendMessage(jid,await gameNotice('STOP',stopResult).catch(()=>({text:stopResult})));
+                    for(const notice of await features.game7Tick({jid,now:Date.now()})){if(!closed&&chats.has(jid))await sock.sendMessage(jid,notice.content);}
                 }catch{console.error('Iris: scheduled group update failed');}
             }
         })().catch(()=>console.error('Iris: schedule tick failed')).finally(()=>{scheduleWork=null;});
@@ -156,13 +159,13 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
         if(closed||!event?.id?.endsWith('@g.us')||!chats.has(event.id)||!['add','remove'].includes(event.action))return;
         const jid=event.id, action=event.action, count=event.participants?.length||0;
         commandQueue=commandQueue.then(async()=>{
-            if(action==='remove')stopTickets.revokeGroup(jid);
+            if(action==='remove')stopTickets.revokeGroup(jid);gameQuotes.revoke(jid);
             if(closed||!chats.has(jid))return;
             const message=await features.welcome({jid,action,count});
             if(message&&!closed&&chats.has(jid))await sock.sendMessage(jid,{text:message});
         }).catch(()=>console.error('Iris: welcome notification failed'));
     });
-    async function deliver(jid,response,msg){
+    async function deliver(jid,response,msg,game=null,actor=null){
         if(closed||!response||!chats.has(jid))return;
         if(response.unoDelivery){
             const payload=response.unoDelivery;
@@ -176,14 +179,14 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             const failed=await dispatchUno({payload,allowed,active:()=>!closed&&chats.has(jid),send:(to,content)=>sock.sendMessage(to,content)});
             if(closed||!chats.has(jid))return;
             const publicPart=payload.public;
-            if(publicPart)await sock.sendMessage(jid,typeof publicPart==='string'?{text:publicPart}:publicPart,{quoted:msg});
+            if(publicPart){const sent=await sock.sendMessage(jid,typeof publicPart==='string'?{text:publicPart}:publicPart,{quoted:msg});if(publicPart.image&&game)gameQuotes.bind(jid,sent?.key?.id,game,actor);}
             if(failed)await sock.sendMessage(jid,{text:'🌸 Algumas mãos não puderam ser enviadas no privado. O jogador pode usar '+(payload.game==='naval'?':naval pv ou :naval mao':payload.game==='domino'?':domino pv ou :domino mao':':uno pv ou :uno mao')+'. Nenhuma peça ou carta será revelada no grupo.'},{quoted:msg});
             return;
         }
         if(response.soundSticker){
             try{await sendSoundSticker(sock,baileys,jid,response.soundSticker,msg);}
             catch{if(!closed&&chats.has(jid))await sock.sendMessage(jid,{text:'🌸 Não foi possível confirmar o envio com som. Use :s.'},{quoted:msg});}
-        }else await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});
+        }else {const sent=await sock.sendMessage(jid,typeof response==='string'?{text:response}:response,{quoted:msg});if(response.image&&game)gameQuotes.bind(jid,sent?.key?.id,game,actor);}
     }
     const runFeature=(extra,jid,actor,msg,owner)=>features({command:extra,jid,actor,sock,msg,owner,rawName:msg.pushName||(owner?sock.user?.name:null),loadProfileAsset:kind=>ownProfileImage(msg,baileys,kind),funMedia:(m,name,arg)=>runFunMedia(m,baileys,name,arg),newMedia:(m,name,arg)=>mediaFeature4(m,baileys,name,arg),professionalMedia:(m,name,arg)=>mediaFeature5(m,baileys,name,arg),loadPackImage:()=>directFunImage(msg,baileys),sticker:(m,name,arg)=>stickerCommand(m,baileys,name,arg),textSticker:makeTextSticker,meme:(m,arg)=>makeMeme(m,arg,baileys),convert:(m,name)=>convertMedia(m,baileys,name),studio:(m,name,arg)=>studioCommand(m,baileys,name,arg),advancedMedia:(m,name,arg)=>media3(m,baileys,name,arg),original:async(m,name,arg)=>{try{return name==='tts'?await tts(arg):name==='renomear'?await studioCommand(m,baileys,name,arg):await searchOriginal(name,arg);}catch{return '🌸 Não foi possível concluir. Use um tema disponível ou texto de até 200 caracteres.';}},unoRoute:((['uno','domino','unobot','naval'].includes(extra.name)&&extra.arg.toLowerCase()==='pv')||(extra.name==='unobot'&&extra.arg==='novo')||(extra.name==='revanche'&&extra.arg==='unobot'))?unoRoute(owner?sock.user?.id:msg.key?.participant):null});
     const fresh=msg=>{
@@ -210,7 +213,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
             if(String(plain).trim().toLowerCase()!==':ping'){
                 const text=plain||msg.message?.imageMessage?.caption||msg.message?.documentMessage?.caption||msg.message?.videoMessage?.caption||'';
                 const enabled=chats.has(jid),owner=msg.key?.fromMe===true;
-                if(!fresh(msg)||(!decideCommand({jid,fromMe:owner,text,enabled})&&!(enabled&&(parseExtra(text,owner)||isChessMove(plain)||shortActivity(plain)||short3(plain)||megaShort(plain)))))continue;
+                if(!fresh(msg)||(!decideCommand({jid,fromMe:owner,text,enabled})&&!(enabled&&(parseExtra(text,owner)||gameQuotes.resolve(jid,msg.message,getActor(msg))||isChessMove(plain)||shortActivity(plain)||short3(plain)||megaShort(plain)))))continue;
                 if(normal.length<30)normal.push(msg);else incrementRuntime('dropped');
                 continue;
             }
@@ -251,7 +254,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 }
                 const action = decideCommand({ jid, fromMe: msg.key?.fromMe === true, text, enabled: chats.has(jid) });
                 const owner = msg.key?.fromMe === true;
-                const extra = chats.has(jid) && jid.endsWith('@g.us') ? parseExtra(text, owner) : null;
+                const extra = chats.has(jid) && jid.endsWith('@g.us') ? (parseExtra(text, owner)||gameQuotes.resolve(jid,msg.message,getActor(msg))) : null;
                 const plain = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
                 const shortMove = !action && !extra && chats.has(jid) && jid.endsWith('@g.us') && isChessMove(plain);
                 const activity=!action&&!extra&&chats.has(jid)&&jid.endsWith('@g.us')?(shortActivity(plain)||short3(plain)||megaShort(plain)):null;
@@ -297,7 +300,7 @@ export async function startHeadlessBot(restartCount = 0, lifecycle = { stopping:
                 if(!closed&&response){
                     try{
                         if(action==='off')await sock.sendMessage(jid,{text:response},{quoted:msg});
-                        else {const game=extra?.name||(shortMove?'xadrez':activity?.name);const key=game==='resposta'?'quiz':game;const title=key==='jogos'?'Central de jogos':Object.hasOwn(gameCatalog,key||'')?gameCatalog[key][0]:null;if(title&&typeof response==='string')response=await visualGameResponse(key,title,response).catch(()=>response);await deliver(jid,response,msg);}
+                        else {const game=extra?.name||(shortMove?'xadrez':activity?.name);const key=game==='resposta'?'quiz':game;const title=key==='jogos'?'Central de jogos':Object.hasOwn(gameCatalog,key||'')?gameCatalog[key][0]:null;if(title&&typeof response==='string')response=await visualGameResponse(key,title,response).catch(()=>response);await deliver(jid,response,msg,key,actor);}
                     }catch{incrementRuntime('errors');console.error('Iris: individual response delivery failed');}
                 }
                 incrementRuntime('processed');if(Date.now()-commandStarted>10000)incrementRuntime('slow');
