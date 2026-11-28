@@ -36,7 +36,7 @@ for(const name of retiredGames)simple.delete(name);
 const needsOwner = new Set(['abrir','fechar','criar','remover','definirregras','boasvindas',...groupOwnerCommands,'advertir','advertencias','limparadvertencia','agenda','sugestoes','limparsugestoes','prefixo','backup',...originalAdmin,'backupinfinity']);
 export function parseExtra(text, owner) {
     text=String(text||'').trim();
-    const match = /^:(2048|8ball|abraço|[a-z]+)(?:\s+([\s\S]{1,500}))?$/i.exec(text);
+    const match = /^:(2048|8ball|abraço|[a-z][a-z0-9]*)(?:\s+([\s\S]{1,500}))?$/i.exec(text);
     if (!match) return null;
     const raw = match[1].toLowerCase();
     let name = raw==='fig'?'s':raw==='abraço'?'abraco':raw;
@@ -184,7 +184,7 @@ export function makeFeatures() {
         const {s,state} = await readGroup(jid);
         const id = hash(s.key, jid + ':' + actor);
         const player = state.players[id];
-        if(games7.includes(name)||controls7.includes(name)){if(!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;const result=await game7({name,arg,state,id,owner});if(result?.changed)await save(s,state);return result?.text??null;}
+        if(games7.includes(name)||controls7.includes(name)){if(arg!=='sair'&&!strictGate(jid,id,groupConfig(state).spam==='rigoroso'))return null;const result=await game7({name,arg,state,id,owner});if(result?.changed)await save(s,state);return result?.text??null;}
         if(infinityCommands.includes(name)){
             const category=infinityGames.includes(name)||infinityStudy.includes(name)?'jogos':name==='backupinfinity'||name==='infinity'||name==='ajudainfinity'?null:'economia';
             const required=category&&groupConfig(state).roles?.[category];
@@ -351,7 +351,7 @@ export function makeFeatures() {
             if(alreadyApplied(state,token))return null;
             const req=state.config5?.commands?.[name];
             const arg=input.command?.arg||input.arg||'';
-            const exitAllowed=['sair','apagar','off'].includes(arg)&&(['uno','domino','unobot','ludo','sudoku','termo','xadrez','fun','perfilpublico','pacotefig','colagem','festival','imobiliario','trilha','expedicao','reliquia','guilda','simulado','desafioestudo','festivalinfinity','stop'].includes(name));
+            const exitAllowed=['sair','apagar','off'].includes(arg)&&(['uno','domino','unobot','ludo','sudoku','termo','xadrez','fun','perfilpublico','pacotefig','colagem','festival','imobiliario','trilha','expedicao','reliquia','guilda','simulado','desafioestudo','festivalinfinity','stop',...games7].includes(name));
             if(req&&!exitAllowed&&!commandPermitted(state,name,await adminRole(sock,jid,msg,owner)))return input.shorthand?null:'Comando restrito pelo responsável.';
             if(gameCommands.has(name)&&!exitAllowed){const required=groupConfig(state).roles?.jogos;const role=owner?'responsavel':required&&required!=='todos'?await adminRole(sock,jid,msg,owner):'membro';if(!await categoryAllowed(state,'jogos',role))return input.shorthand?null:'Jogos limitados pelo responsável.';}
             const before=Object.fromEntries(Object.entries(state.players).map(([k,p])=>[k,[p.xp,p.coins,p.coop5]]));
