@@ -1,8 +1,8 @@
 import {randomInt,randomBytes} from 'node:crypto';
 import {recordGame,gameStats} from './profileCard.js';
-import {game7Visual} from './gameVisual.js';
+import {game7Visual,diceAnimation7} from './gameVisual.js';
 export const games7=['conecta4','reversi','mastermind','nonograma','rummikub','pontinhos','deslizante','diferencas','quizmusical','investigacao'];
-export const controls7=['tema7','estatisticas7','medalhas7'];
+export const controls7=['tema7','estatisticas7','medalhas7','torneio7','animacao7'];
 const dual=new Set(['conecta4','reversi','pontinhos']),shared=new Set([...dual,'investigacao']);
 const titles={conecta4:'CONECTA 4',reversi:'REVERSI',mastermind:'MASTERMIND',nonograma:'NONOGRAMA',rummikub:'RUMMIKUB • DESAFIO SOLO',pontinhos:'JOGO DOS PONTINHOS',deslizante:'QUEBRA-CABEÇA',diferencas:'JOGO DAS DIFERENÇAS',quizmusical:'QUIZ MUSICAL',investigacao:'INVESTIGAÇÃO COOPERATIVA'};
 const themes=['iris','neon','madeira','oceano','amoled'];
@@ -66,8 +66,11 @@ function publicView(name,g){
 }
 async function image(name,g,theme,notice=''){const view=publicView(name,g);if(notice)view.lines.unshift(notice);return game7Visual(view,theme);}
 const duration=(g,now)=>{g.deadline=g.seconds?now+g.seconds*1000:0;g.expires=now+day;};
+function tournamentMatch(d,t,ids,now){const g={ids:ids.slice(),started:false,difficulty:'medio',seconds:120,expires:now+day,turn:0,match:randomBytes(8).toString('hex'),tournament7:true};init('conecta4',g,randomInt);duration(g,now);d.matches.conecta4=g;return g;}
+function tournamentAdvance(d,g,winner,now){const t=d.tournament;if(!g.tournament7||t?.phase!=='playing')return '';const pair=t.pairs[t.index];if(!pair||pair.some((id,i)=>id!==g.ids[i]))return '';if(winner===null){t.draws=(t.draws||0)+1;if(t.draws>=3){t.phase='cancelled';return ' • Torneio encerrado após três empates na mesma partida.';}tournamentMatch(d,t,pair,now);return ' • Empate: partida repetida automaticamente. :conecta4 mesa';}t.draws=0;t.winners.push(winner);if(t.index===0){t.index=1;tournamentMatch(d,t,t.pairs[1],now);return ' • Segunda semifinal iniciada. :conecta4 mesa';}if(t.index===1){t.index=2;t.pairs.push(t.winners.slice(0,2));tournamentMatch(d,t,t.pairs[2],now);return ' • Final iniciada. :conecta4 mesa';}t.phase='done';t.champion=winner;return ' • Campeão: participante '+(t.ids.indexOf(winner)+1)+' do torneio!';}
 function finish(db,state,key,name,g,winner,now,notice){g.done=true;g.deadline=0;g.expires=now+3600000;g.result=notice;db.rematches[key]={ids:g.ids.slice(),difficulty:g.difficulty,seconds:g.seconds,expires:now+3600000,yes:[]};
  for(const id of g.ids.filter(k=>k!==bot&&state.players?.[k])){const h=db.history[id]??=[];h.push({game:name,result:name==='investigacao'?'concluído':winner===null?'empate':winner===id?'vitória':'derrota',at:now});if(h.length>40)h.splice(0,h.length-40);recordGame(state,name,id,name==='investigacao'?'c':winner===null?'d':winner===id?'w':'l');}
+ if(g.tournament7){delete db.rematches[key];g.result+=tournamentAdvance(db,g,winner,now);}
 }
 function aiMove(name,g,choose){
  const side=g.turn+1;
@@ -82,10 +85,21 @@ function dualMove(name,g,arg){const s=g.turn+1;let win,again=false;
  if(name==='pontinhos'){if(!dotEdges.includes(arg)||g.edges[arg])return {error:'Escolha uma aresta livre: h11 ou v11.'};g.edges[arg]=s;for(let i=0;i<9;i++)if(!g.boxes[i]&&boxEdges(i).every(k=>g.edges[k])){g.boxes[i]=s;g.scores[s-1]++;again=true;}if(g.boxes.every(Boolean))win=g.scores[0]===g.scores[1]?null:g.ids[g.scores[0]>g.scores[1]?0:1];}
  g.moves++;if(win===undefined&&!again)g.turn=1-g.turn;return {win};
 }
-export function removeGames7(state,id){const d=state.game7;if(!d)return;delete d.history?.[id];for(const [k,g] of Object.entries(d.matches||{}))if(g.ids.includes(id))delete d.matches[k];for(const [k,g] of Object.entries(d.rematches||{}))if(g.ids.includes(id))delete d.rematches[k];}
+export function removeGames7(state,id){const d=state.game7;if(!d)return;if(d.tournament?.ids.includes(id)){if(d.matches.conecta4?.tournament7)delete d.matches.conecta4;delete d.tournament;}delete d.history?.[id];for(const [k,g] of Object.entries(d.matches||{}))if(g.ids.includes(id))delete d.matches[k];for(const [k,g] of Object.entries(d.rematches||{}))if(g.ids.includes(id))delete d.rematches[k];}
 export async function game7({name,arg='',state,id,owner=false,now=Date.now(),choose=randomInt}){
  if(!games7.includes(name)&&!controls7.includes(name))return null;
  const d=base(state);arg=normalize(arg);
+ if(name==='animacao7'){if(arg!=='dado')return out('Use :animacao7 dado — dado virtual animado, sem apostas.');return out(await diceAnimation7(choose(6)+1));}
+ if(name==='torneio7'){
+  let t=d.tournament;if(t?.expires<=now){if(d.matches.conecta4?.tournament7)delete d.matches.conecta4;delete d.tournament;t=null;}
+  const summary=()=>{const labels=t.ids.map((_,i)=>'Participante '+(i+1));return '🏆 Torneio Conecta 4 • '+t.phase+'\nInscritos: '+labels.length+'/4\n'+(t.pairs||[]).map((pair,i)=>(i===2?'Final':'Semifinal '+(i+1))+': '+pair.map(k=>'P'+(t.ids.indexOf(k)+1)).join(' × ')).join('\n')+(t.champion?'\nCampeão: P'+(t.ids.indexOf(t.champion)+1):'')+'\n:torneio7 entrar | iniciar | ver | cancelar\n:conecta4 mesa';};
+  if(arg==='novo'){if(t&&['lobby','playing'].includes(t.phase))return out('Já existe torneio.');if(d.matches.conecta4&&!d.matches.conecta4.done)return out('Encerre a partida de Conecta 4 antes.');d.tournament={ids:[id],phase:'lobby',pairs:[],winners:[],index:0,expires:now+day};return out('Torneio Conecta 4 criado! Quatro participantes: :torneio7 entrar. Criador: :torneio7 iniciar. Sem apostas.',true);}
+  if(!t)return out('Use :torneio7 novo.');
+  if(arg==='entrar'){if(t.phase!=='lobby'||t.ids.includes(id)||t.ids.length>=4)return out('Inscrição indisponível.');t.ids.push(id);return out(summary(),true);}
+  if(arg==='cancelar'){if(t.ids[0]!==id&&!owner)return out('Somente criador ou responsável cancela.');if(d.matches.conecta4?.tournament7)delete d.matches.conecta4;delete d.tournament;return out('Torneio cancelado.',true);}
+  if(arg==='iniciar'){if(t.ids[0]!==id||t.phase!=='lobby'||t.ids.length!==4||d.matches.conecta4&&!d.matches.conecta4.done)return out('Criador inicia com 4 inscritos e mesa livre.');t.phase='playing';t.pairs=[t.ids.slice(0,2),t.ids.slice(2,4)];const g=tournamentMatch(d,t,t.pairs[0],now);return out(await image('conecta4',g,d.theme,'Semifinal 1 iniciada! P1 × P2. :torneio7 ver'),true);}
+  return out(summary());
+ }
  for(const [k,g] of Object.entries(d.matches))if(g.expires<=now)delete d.matches[k];
  for(const [k,g] of Object.entries(d.rematches))if(g.expires<=now)delete d.rematches[k];
  if(name==='tema7'){if(!arg)return out('Tema dos novos jogos: '+d.theme+'. Opções: '+themes.join(', '));if(!owner)return out('Somente o responsável altera o tema do grupo.');if(!themes.includes(arg))return out('Temas: '+themes.join(', '));d.theme=arg;return out('Tema dos novos jogos: '+arg,true);}
@@ -98,11 +112,11 @@ export async function game7({name,arg='',state,id,owner=false,now=Date.now(),cho
  if(g&&!g.done)return out('Partida ativa. Use :'+name+' mesa ou sair.');
  if(arg.startsWith('bot')&&!dual.has(name))return out('Modo bot disponível em Conecta 4, Reversi e Pontinhos.');
  const solo=!shared.has(name)||arg.startsWith('bot');if(!create(solo&&dual.has(name)?[id,bot]:[id],arg.split(' ')[1]||'medio',dual.has(name)?90:0,solo))return out('Limite de partidas atingido.');delete d.rematches[key];return render('',true);}
- if(arg==='revanche'){const r=d.rematches[key];if(!r||!r.ids.includes(id)||g&&!g.done)return out('Revanche indisponível.');if(!r.yes.includes(id))r.yes.push(id);if(r.ids.filter(k=>k!==bot).every(k=>r.yes.includes(k))){if(!create(r.ids,r.difficulty,r.seconds,true))return out('Limite atingido.');delete d.rematches[key];return render('Revanche iniciada!',true);}return out('Revanche solicitada. Outro jogador: :'+name+' revanche.',true);}
+ if(arg==='revanche'){if(g?.tournament7)return out('Torneio em andamento. Use :torneio7 ver.');const r=d.rematches[key];if(!r||!r.ids.includes(id)||g&&!g.done)return out('Revanche indisponível.');if(!r.yes.includes(id))r.yes.push(id);if(r.ids.filter(k=>k!==bot).every(k=>r.yes.includes(k))){if(!create(r.ids,r.difficulty,r.seconds,true))return out('Limite atingido.');delete d.rematches[key];return render('Revanche iniciada!',true);}return out('Revanche solicitada. Outro jogador: :'+name+' revanche.',true);}
  if(!g)return out('Use :'+name+' novo.');
  if(['mesa','m','assistir',''].includes(arg))return render(g.result||'');
  if(!g.ids.includes(id)&&arg!=='entrar')return out('Você é espectador. Use :'+name+' assistir.');
- if(arg==='sair'){if(!g.ids.includes(id))return out('Você não participa.');delete d.matches[key];delete d.rematches[key];return out('Partida encerrada.',true);}
+ if(arg==='sair'){if(g.tournament7)return out('Use :torneio7 cancelar.');if(!g.ids.includes(id))return out('Você não participa.');delete d.matches[key];delete d.rematches[key];return out('Partida encerrada.',true);}
  if(arg==='entrar'){if(!shared.has(name)||g.started||g.ids.includes(id)||g.ids.length>=2)return out('Inscrição indisponível.');g.ids.push(id);return render('Participante inscrito.',true);}
  if(/^tempo (0|30|60|90|120|180)$/.test(arg)){if(!dual.has(name)||g.ids[0]!==id||g.started)return out('O criador configura o tempo antes de iniciar.');g.seconds=Number(arg.split(' ')[1]);return render('Tempo: '+(g.seconds||'sem limite'),true);}
  if(arg==='iniciar'){if(g.started||g.ids[0]!==id||g.ids.length<2)return out('O criador inicia com dois participantes.');init(name,g,choose);duration(g,now);return render('Partida iniciada!',true);}
