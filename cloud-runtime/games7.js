@@ -51,8 +51,8 @@ function init(name,g,choose){
 }
 function publicView(name,g){
  let view={title:titles[name],sub:g.done?'Partida concluída':g.started?(dual.has(name)?'Vez: '+tag(g,g.ids[g.turn]):'Jogadas: '+g.moves):'Sala de espera',command:':'+name,lines:[]};
- if(!g.started){view.lines=['Participantes: '+g.ids.length+'/2','Outro jogador: :'+name+' entrar','Criador: :'+name+' iniciar','Solo: :'+name+' bot medio'];return view;}
- if(g.deadline&&!g.done)view.lines.push('Tempo até '+new Date(g.deadline).toISOString().slice(11,19)+' UTC');
+ if(!g.started){view.lines=['Participantes: '+g.ids.length+'/2','Outro jogador: :'+name+' entrar','Criador: :'+name+' iniciar',...(dual.has(name)?['Solo: :'+name+' bot medio','Tempo: :'+name+' tempo 60']:[])];return view;}
+ if(g.deadline&&!g.done)view.lines.push('Prazo do turno: '+g.seconds+' s • até '+new Date(g.deadline).toISOString().slice(11,19)+' UTC');
  if(name==='conecta4'){view.grid={cols:7,rows:6,values:g.b.map(v=>v?String(v):''),kind:'discs'};view.lines.push('Escolha uma coluna de 1 a 7.');}
  if(name==='reversi'){view.grid={cols:8,rows:8,values:g.b.map(v=>v?String(v):''),kind:'discs',marks:rMoves(g.b,g.turn+1),coords:true};view.lines.push('Peças: '+g.b.filter(v=>v===1).length+' × '+g.b.filter(v=>v===2).length,'Escolha uma casa marcada, ex.: d3.');}
  if(name==='pontinhos'){view.dots={edges:g.edges,boxes:g.boxes};view.lines.push('Caixas: '+g.scores.join(' × '),'h11 = horizontal, v11 = vertical.');}
@@ -67,11 +67,12 @@ function publicView(name,g){
 async function image(name,g,theme,notice=''){const view=publicView(name,g);if(notice)view.lines.unshift(notice);return game7Visual(view,theme);}
 const duration=(g,now)=>{g.deadline=g.seconds?now+g.seconds*1000:0;g.expires=now+day;};
 function finish(db,state,key,name,g,winner,now,notice){g.done=true;g.deadline=0;g.expires=now+3600000;g.result=notice;db.rematches[key]={ids:g.ids.slice(),difficulty:g.difficulty,seconds:g.seconds,expires:now+3600000,yes:[]};
- for(const id of g.ids.filter(k=>k!==bot)){const h=db.history[id]??=[];h.push({game:name,result:winner===null?'empate':winner===id?'vitória':shared.has(name)&&!dual.has(name)?'concluído':'derrota',at:now});if(h.length>40)h.splice(0,h.length-40);recordGame(state,name,id,winner===null?'d':winner===id?'w':shared.has(name)&&!dual.has(name)?'c':'l');}
+ for(const id of g.ids.filter(k=>k!==bot&&state.players?.[k])){const h=db.history[id]??=[];h.push({game:name,result:name==='investigacao'?'concluído':winner===null?'empate':winner===id?'vitória':'derrota',at:now});if(h.length>40)h.splice(0,h.length-40);recordGame(state,name,id,name==='investigacao'?'c':winner===null?'d':winner===id?'w':'l');}
 }
 function aiMove(name,g,choose){
  const side=g.turn+1;
- if(name==='conecta4'){const opts=Array.from({length:7},(_,i)=>i).filter(c=>c4drop(g.b,c)>=0),rank=(c,s)=>{let b=g.b.slice();b[c4drop(b,c)]=s;return c4win(b,s);};return String((g.difficulty!=='facil'&&(opts.find(c=>rank(c,side))??opts.find(c=>rank(c,3-side))))!==false&&g.difficulty!=='facil'?(opts.find(c=>rank(c,side))??opts.find(c=>rank(c,3-side))??(g.difficulty==='dificil'&&opts.includes(3)?3:opts[choose(opts.length)]))+1:opts[choose(opts.length)]+1);}
+ if(name==='conecta4'){const opts=Array.from({length:7},(_,i)=>i).filter(c=>c4drop(g.b,c)>=0),rank=(c,s)=>{let b=g.b.slice();b[c4drop(b,c)]=s;return c4win(b,s);};let pick=opts[choose(opts.length)];if(g.difficulty!=='facil'){pick=opts.find(c=>rank(c,side))??opts.find(c=>rank(c,3-side))??(g.difficulty==='dificil'&&opts.includes(3)?3:pick);}return String(pick+1);}
+
  if(name==='reversi'){const opts=rMoves(g.b,side);if(!opts.length)return 'passar';const i=g.difficulty==='facil'?opts[choose(opts.length)]:opts.slice().sort((a,b)=>(g.difficulty==='dificil'&&[0,7,56,63].includes(b)?100:0)+reversiFlips(g.b,b,side).length-(g.difficulty==='dificil'&&[0,7,56,63].includes(a)?100:0)-reversiFlips(g.b,a,side).length)[0];return coord(i,8);}
  const opts=dotEdges.filter(e=>!g.edges[e]);if(g.difficulty!=='facil'){const close=opts.find(e=>g.boxes.some((v,i)=>!v&&boxEdges(i).includes(e)&&boxEdges(i).every(k=>k===e||g.edges[k])));if(close)return close;}return opts[choose(opts.length)];
 }
@@ -121,4 +122,16 @@ export async function game7({name,arg='',state,id,owner=false,now=Date.now(),cho
  if(name==='rummikub'){const m=/^([1-9]) ([1-9]) ([1-9])$/.exec(arg);if(!m)return out('Escolha três posições, ex.: 1 2 3.');const ix=m.slice(1).map(x=>Number(x)-1);if(new Set(ix).size!==3||ix.some(i=>g.used.includes(i)))return out('Escolha três peças livres distintas.');const ts=ix.map(i=>g.tiles[i]),nums=ts.map(t=>t.n).sort((a,b)=>a-b);const set=nums.every(n=>n===nums[0])&&new Set(ts.map(t=>t.c)).size===3,run=ts.every(t=>t.c===ts[0].c)&&nums[1]===nums[0]+1&&nums[2]===nums[1]+1;if(!set&&!run)return out('Combinação inválida.');g.used.push(...ix);g.melds.push(ix);won=g.used.length===9;}
  if(name==='quizmusical'||name==='investigacao'){if(!/^[123]$/.test(arg))return out('Escolha 1, 2 ou 3.');const pool=name==='quizmusical'?music:cases;if(Number(arg)!==pool[g.stage][2])return out('Reveja a pista. Tente outra alternativa.');if(name==='investigacao'&&g.ids[g.turn]!==id)return out('Aguarde a vez do outro investigador.');g.stage++;if(name==='investigacao')g.turn=(g.turn+1)%g.ids.length;won=g.stage===pool.length;}
  g.moves++;duration(g,now);if(won||loss){finish(d,state,key,name,g,won?id:bot,now,won?'Desafio concluído!':'Fim de jogo. '+notice);return render(g.result,true);}return render(notice,true);
+}
+
+export async function game7Tick(state,now=Date.now()){
+ const d=state.game7;if(!d)return {changed:false,notices:[]};
+ const notices=[];let changed=false;
+ for(const [k,g] of Object.entries(d.matches||{})){
+ if(g.expires<=now){delete d.matches[k];changed=true;continue;}
+ if(!dual.has(k)||!g.started||g.done||!g.deadline||g.deadline>now)continue;
+ const winner=g.ids[1-g.turn];finish(d,state,k,k,g,winner,now,tag(g,winner)+' venceu por tempo.');notices.push({name:k,content:await image(k,g,d.theme,g.result)});changed=true;
+ }
+ for(const [k,r] of Object.entries(d.rematches||{}))if(r.expires<=now){delete d.rematches[k];changed=true;}
+ return {changed,notices};
 }
