@@ -92,6 +92,11 @@ export function makeManager(supervisor,{now=Date.now}={}){
  const a=await remote('/rest/v1/iris_manager_bots',{method:v.action==='create'?'POST':'PATCH',token:user.token,data:v.action==='create'?{user_id:user.id,display_name:name}:{display_name:name},query:v.action==='rename'?{user_id:'eq.'+user.id}:undefined});
  reply(res,a.ok?200:409,{message:a.ok?'Configuração salva. Conexão ainda pendente.':'Não foi possível salvar. Cada conta pode criar um rascunho.'});return true;
  }
+ if(endpoint==='pairing'){
+ if(!await isAdmin(user)||user.aal!=='aal2'||!user.verifiedFactors.length){reply(res,403,{error:'Somente o responsável com autenticação em duas etapas pode parear a Íris principal.'});return true;}
+ if(post){const v=await body(req);if(v.accept!==true){reply(res,400,{error:'Confirme o pareamento da sua própria conta.'});return true;}if(!gate('pairing:'+user.id,2,300000)){reply(res,429,{error:'Aguarde antes de solicitar outro código.'});return true;}try{await supervisor.relink(user.id);}catch{reply(res,409,{error:'A sessão deve estar desconectada e não pode haver outro pareamento em andamento.'});return true;}}
+ reply(res,200,supervisor.pairingStatus(user.id));return true;
+ }
  if(endpoint==='control'&&post){
  if(!await isAdmin(user)){reply(res,403,{error:'Acesso exclusivo do responsável autorizado.'});return true;}
  const v=await body(req);if(!['start','stop','restart'].includes(v.action)){reply(res,400,{error:'Ação inválida.'});return true;}
