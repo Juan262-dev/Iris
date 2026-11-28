@@ -13,7 +13,7 @@ await Promise.all([s.action('start'),s.action('start')]);assert.equal(children.l
 await s.action('restart');assert.equal(children.length,3);assert.deepEqual(writes,[false,true,true,true]);
 assert.equal(validOrigin({headers:{origin,'x-iris-request':'1'}},origin),true);
 assert.equal(validOrigin({headers:{origin:'https://evil.example','x-iris-request':'1'}},origin),false);
-const originalFetch=globalThis.fetch;const env={...process.env};const bots=new Map();let controlCalls=0,mfaEnabled=false,recoveries=0;const factor='33333333-3333-4333-8333-333333333333',challenge='44444444-4444-4444-8444-444444444444',aal2='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({aal:'aal2'})).toString('base64url')+'.test';
+const originalFetch=globalThis.fetch;const env={...process.env};const bots=new Map();let controlCalls=0,mfaEnabled=false,recoveries=0,pairingCalls=0;const factor='33333333-3333-4333-8333-333333333333',challenge='44444444-4444-4444-8444-444444444444',aal2='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({aal:'aal2'})).toString('base64url')+'.test';
 process.env.SUPABASE_URL='https://unit.supabase.co';process.env.IRIS_MANAGER_PUBLISHABLE_KEY='sb_publishable_unit_test';process.env.RENDER_EXTERNAL_URL=origin;
 globalThis.fetch=async(url,opt={})=>{const u=new URL(url);if(u.hostname!=='unit.supabase.co')return originalFetch(url,opt);
  const token=opt.headers?.Authorization?.slice(7),uid=token==='token-a'||token===aal2?a:token==='token-b'?b:null;
@@ -36,7 +36,7 @@ globalThis.fetch=async(url,opt={})=>{const u=new URL(url);if(u.hostname!=='unit.
  }
  throw Error('unexpected fetch');
 };
-const h=makeManager({snapshot:()=>({ready:true,status:'conectado',desired:true,storage:'ok'}),action:async()=>{controlCalls++;return {ready:true,status:'conectado',desired:true,storage:'ok'};}});
+const h=makeManager({relink:async uid=>{assert.equal(uid,a);pairingCalls++;},pairingStatus:uid=>{assert.equal(uid,a);return {state:'ready',code:'TEST1234'};},snapshot:()=>({ready:true,status:'conectado',desired:true,storage:'ok'}),action:async()=>{controlCalls++;return {ready:true,status:'conectado',desired:true,storage:'ok'};}});
 const server=http.createServer(async(req,res)=>{if(!await h(req,res)){res.writeHead(404);res.end();}});
 try{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;
@@ -46,6 +46,8 @@ try{
  assert.equal((await call('control',{method:'POST',token:'token-b',data:{action:'stop'}})).status,403);
  assert.equal((await call('control',{method:'POST',token:'token-a',where:'https://bad.example',data:{action:'stop'}})).status,403);
  assert.equal(controlCalls,0);
+ assert.equal((await call('pairing',{token:'token-b'})).status,403);
+ assert.equal((await call('pairing',{method:'POST',token:'token-a',data:{accept:true}})).status,403);
  const login=await call('login',{method:'POST',data:{email:'admin@example.test',password:'test-password123'}});assert.equal(login.status,200);assert.match(login.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Strict/);
  assert.equal((await call('bot',{method:'POST',token:'token-a',data:{action:'create',name:'Iris A',user_id:b}})).status,200);
  assert.equal((await call('bot',{method:'POST',token:'token-b',data:{action:'create',name:'Iris B',user_id:a}})).status,200);
@@ -59,6 +61,10 @@ try{
  assert.equal((await call('mfa-verify',{method:'POST',token:'token-a',data:{factor,code:'000000'}})).status,400);
  const verified=await call('mfa-verify',{method:'POST',token:'token-a',data:{factor,code:'123456'}});assert.equal(verified.status,200);assert.match(verified.headers.get('set-cookie'),/HttpOnly/);
  assert.equal((await call('me',{token:aal2})).status,200);
+ assert.equal((await call('pairing',{method:'POST',token:aal2,data:{accept:false}})).status,400);
+ assert.equal((await call('pairing',{method:'POST',token:aal2,data:{accept:true},where:'https://bad.example'})).status,403);
+ const paired=await call('pairing',{method:'POST',token:aal2,data:{accept:true}});assert.equal(paired.status,200);assert.equal((await paired.json()).code,'TEST1234');assert.equal(paired.headers.get('cache-control'),'no-store');assert.equal(pairingCalls,1);
+ assert.equal((await call('pairing',{token:'token-b'})).status,403);
  assert.equal((await call('recover',{method:'POST',data:{email:'admin@example.test'}})).status,200);assert.equal(recoveries,1);
  console.log('Iris: Manager MFA gate, authenticated factor verification and recovery request mocks passed');
  console.log('Iris: Manager responsive assets, verified auth, cookie/CSRF, tenant isolation, owner-only controls and supervisor tests passed');
