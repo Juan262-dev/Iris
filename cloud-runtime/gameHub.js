@@ -38,6 +38,7 @@ const catalog={
  moeda:['Cara ou coroa','solo','','resultado aleatório, sem apostas']
 };
 catalog.torneiouno=['Torneio UNO','grupo','novo','entrar → iniciar'];
+catalog.torneio7=['Torneio Conecta 4','grupo','novo','entrar → iniciar; ver; cancelar'];
 Object.assign(catalog,{
  conecta4:['Conecta 4','ambos','novo','entrar → iniciar; 1–7; bot facil|medio|dificil; tempo 60; assistir; revanche'],
  reversi:['Reversi','ambos','novo','entrar → iniciar; d3; bot facil|medio|dificil; tempo 60; assistir; revanche'],
@@ -51,7 +52,7 @@ Object.assign(catalog,{
  investigacao:['Investigação cooperativa','grupo','novo','entrar → iniciar; 1, 2 ou 3; turnos']
 });
 export const gameCatalog=Object.freeze(catalog);
-export const gameCommands=new Set([...Object.keys(catalog),'resposta','revanche','historicopartidas','tema7','estatisticas7','medalhas7']);
+export const gameCommands=new Set([...Object.keys(catalog),'resposta','revanche','historicopartidas','tema7','estatisticas7','medalhas7','torneio7','animacao7']);
 export function gameGuide(k){if(!Object.hasOwn(catalog,k))return null;const [title,mode,start,how]=catalog[k];return '🎮 *'+title+'* • '+mode+'\nComeçar: :'+k+(start?' '+start:'')+'\nComo jogar: '+how+'\nCentral: :jogos';}
 export function gameHub(arg='',state={},id=null){
  const v=String(arg).trim().toLowerCase(),tokens=v.split(/\s+/),k=tokens[1];
@@ -68,7 +69,7 @@ const catalogSections={
  tabuleiro:['uno','unobot','domino','xadrez','damas','naval','velha','velhadupla','ludo','imobiliario','trilha','conecta4','reversi','pontinhos','rummikub'],
  logica:['memoria','sudoku','termo','2048','forca','numero','cruzadas','encoded','inverse','adivinha','mastermind','nonograma','deslizante','diferencas'],
  estudos:['stop','quiz','quizmulti','batalhaconhecimento','bingoeducativo','detetive','tesouro','quizmusical','investigacao'],
- equipe:['coop','expedicao','reliquia','campeonato','torneiouno'],
+ equipe:['coop','expedicao','reliquia','campeonato','torneiouno','torneio7'],
  rapidos:['ppt','dado','moeda']
 };
 export function gameHubPage(arg=''){
@@ -79,6 +80,6 @@ export function gameHubPage(arg=''){
  if(page>pages)return {error:'Página inexistente. Use :jogos '+(mode==='todos'?'lista':mode)+' 1.'};
  const prefix=':jogos '+(mode==='todos'?'lista':mode);
  const rows=all.slice((page-1)*size,page*size).map(k=>({key:k,title:catalog[k][0],mode:catalog[k][1],command:':'+k+(catalog[k][2]?' '+catalog[k][2]:'')}));
- const caption='🎮 *Íris Game Center* — '+mode+' • '+page+'/'+pages+'\n'+rows.map(r=>'• '+r.title+' — '+r.command).join('\n')+'\n\nCategorias: :jogos tabuleiro | logica | estudos | equipe | rapidos | solo | grupo\nGuia: :jogos dominó (ou :jogos domino)\n'+(page>1?'Anterior: '+prefix+' '+(page-1)+'\n':'')+(page<pages?'Próxima: '+prefix+' '+(page+1)+'\n':'')+'Estatísticas: :jogos meus | ranking stop\nLista em texto: :jogos texto';
+ const caption='🎮 *Íris Game Center* — '+mode+' • '+page+'/'+pages+'\n'+rows.map(r=>'• '+r.title+' — '+r.command).join('\n')+'\n\nCategorias: :jogos tabuleiro | logica | estudos | equipe | rapidos | solo | grupo\nGuia: :jogos dominó (ou :jogos domino)\n'+(page>1?'Anterior: '+prefix+' '+(page-1)+'\n':'')+(page<pages?'Próxima: '+prefix+' '+(page+1)+'\n':'')+'Estatísticas: :estatisticas7 | :medalhas7\nLista em texto: :jogos texto';
  return {mode,page,pages,total:all.length,rows,caption};
 }
