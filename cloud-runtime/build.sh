@@ -59,6 +59,7 @@ node --check cloud-runtime/managerWorker.js
 node --check cloud-runtime/managerSupervisor.js
 node --check cloud-runtime/manager-web/app.js
 node cloud-runtime/manager.test.js
+node cloud-runtime/relink.test.js
 node --check cloud-runtime/managerV2.js
 node cloud-runtime/managerV2.test.js
 node --check lib/Initialize/localStorage.js
