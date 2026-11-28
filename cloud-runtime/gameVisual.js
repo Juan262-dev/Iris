@@ -249,3 +249,17 @@ export async function game7Visual(view,theme='iris'){
  const caption=view.title+' • '+view.sub+'\n'+view.lines.join('\n')+'\n'+view.command+' ajuda | mesa';
  return {image:await sharp(Buffer.from(data)).png().toBuffer(),caption:caption.slice(0,1000)};
 }
+
+export async function diceAnimation7(result){
+ const {mkdtemp,writeFile,readFile,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+ const {execFile}=await import('node:child_process');const {promisify}=await import('node:util');
+ const dir=await mkdtemp(join(tmpdir(),'iris-dice-'));
+ try{
+ const frames=[1,4,2,6,3,result,result,result,result];
+ for(let i=0;i<frames.length;i++){const frame=await luckVisual('dado','DADO VIRTUAL','Resultado: '+frames[i]);await writeFile(join(dir,String(i).padStart(2,'0')+'.png'),frame.image);}
+ const file=join(dir,'dice.mp4');
+ await promisify(execFile)('ffmpeg',['-hide_banner','-loglevel','error','-nostdin','-y','-threads','1','-framerate','5','-i',join(dir,'%02d.png'),'-vf','scale=480:352','-c:v','libx264','-pix_fmt','yuv420p','-an','-movflags','+faststart','-threads','1',file],{timeout:15000,maxBuffer:65536});
+ const video=await readFile(file);if(video.length>1500000)throw Error('size');return {video,gifPlayback:true,caption:'Dado virtual • Resultado: '+result+' • Sem apostas.'};
+ }catch{return luckVisual('dado','DADO VIRTUAL','Resultado: '+result);}finally{await rm(dir,{recursive:true,force:true});}
+}
