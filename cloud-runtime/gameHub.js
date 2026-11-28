@@ -38,8 +38,20 @@ const catalog={
  moeda:['Cara ou coroa','solo','','resultado aleatório, sem apostas']
 };
 catalog.torneiouno=['Torneio UNO','grupo','novo','entrar → iniciar'];
+Object.assign(catalog,{
+ conecta4:['Conecta 4','ambos','novo','entrar → iniciar; 1–7; bot facil|medio|dificil; tempo 60; assistir; revanche'],
+ reversi:['Reversi','ambos','novo','entrar → iniciar; d3; bot facil|medio|dificil; tempo 60; assistir; revanche'],
+ pontinhos:['Jogo dos pontinhos','ambos','novo','entrar → iniciar; h11 ou v11; bot medio; tempo 60; revanche'],
+ mastermind:['Mastermind','solo','novo','1234 (4 números de 1 a 6); mesa; revanche'],
+ nonograma:['Nonograma','solo','novo','a1; x a1; conferir; mesa'],
+ rummikub:['Rummikub solo','solo','novo','1 2 3 (três posições); desafio de trincas e sequências'],
+ deslizante:['Quebra-cabeça deslizante','solo','novo','1–8 (peça vizinha ao vazio); mesa'],
+ diferencas:['Jogo das diferenças','solo','novo','a1–e5; mesa'],
+ quizmusical:['Quiz musical por pistas','solo','novo','1, 2 ou 3; mesa'],
+ investigacao:['Investigação cooperativa','grupo','novo','entrar → iniciar; 1, 2 ou 3; turnos']
+});
 export const gameCatalog=Object.freeze(catalog);
-export const gameCommands=new Set([...Object.keys(catalog),'resposta','revanche','historicopartidas']);
+export const gameCommands=new Set([...Object.keys(catalog),'resposta','revanche','historicopartidas','tema7','estatisticas7','medalhas7']);
 export function gameGuide(k){if(!Object.hasOwn(catalog,k))return null;const [title,mode,start,how]=catalog[k];return '🎮 *'+title+'* • '+mode+'\nComeçar: :'+k+(start?' '+start:'')+'\nComo jogar: '+how+'\nCentral: :jogos';}
 export function gameHub(arg='',state={},id=null){
  const v=String(arg).trim().toLowerCase(),tokens=v.split(/\s+/),k=tokens[1];
@@ -53,9 +65,9 @@ const catalogSections={
  todos:Object.keys(catalog),
  solo:Object.keys(catalog).filter(k=>['solo','ambos'].includes(catalog[k][1])),
  grupo:Object.keys(catalog).filter(k=>['grupo','ambos'].includes(catalog[k][1])),
- tabuleiro:['uno','unobot','domino','xadrez','damas','naval','velha','velhadupla','ludo','imobiliario','trilha'],
- logica:['memoria','sudoku','termo','2048','forca','numero','cruzadas','encoded','inverse','adivinha'],
- estudos:['stop','quiz','quizmulti','batalhaconhecimento','bingoeducativo','detetive','tesouro'],
+ tabuleiro:['uno','unobot','domino','xadrez','damas','naval','velha','velhadupla','ludo','imobiliario','trilha','conecta4','reversi','pontinhos','rummikub'],
+ logica:['memoria','sudoku','termo','2048','forca','numero','cruzadas','encoded','inverse','adivinha','mastermind','nonograma','deslizante','diferencas'],
+ estudos:['stop','quiz','quizmulti','batalhaconhecimento','bingoeducativo','detetive','tesouro','quizmusical','investigacao'],
  equipe:['coop','expedicao','reliquia','campeonato','torneiouno'],
  rapidos:['ppt','dado','moeda']
 };
