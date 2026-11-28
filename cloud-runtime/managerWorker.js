@@ -1,6 +1,7 @@
 import { startHeadlessBot } from './bot.js';
 import { runtimeStatus,setRuntime } from './runtimeStatus.js';
-const life={stopping:false};let stopping=false;
+const sendPairing=(type,code)=>{if(process.connected)try{process.send({type,code});}catch{}};
+const life={stopping:false,relink:process.argv.includes('--relink'),onPairingCode:code=>sendPairing('pairing-code',code),onPairingClear:()=>sendPairing('pairing-clear'),onPairingError:()=>sendPairing('pairing-error')};let stopping=false;
 function report(){if(process.connected)try{process.send({type:'status',status:runtimeStatus().whatsapp,storage:runtimeStatus().storage,memory:Math.round(process.memoryUsage().rss/1048576)});}catch{}}
 const tick=setInterval(report,2000);tick.unref();
 const startup=startHeadlessBot(0,life);
